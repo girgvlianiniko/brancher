@@ -1,0 +1,10 @@
+{
+  "name": "brancher",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "typecheck": "pnpm -r typecheck",
+    "build": "pnpm --filter @brancher/web build"
+  }
+}

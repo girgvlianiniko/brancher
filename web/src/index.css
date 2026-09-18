@@ -1,0 +1,120 @@
+@import 'tailwindcss';
+
+/*
+ * Colour tokens. Components use the Tailwind names from @theme below (bg-surface,
+ * text-fg-2, …), never raw hex, so light and dark swap in one place.
+ * Lane colours are the validated 8-hue categorical palette, stepped per mode.
+ */
+:root {
+  color-scheme: light;
+  --bg: #f6f6f4;
+  --surface: #fcfcfb;
+  --surface-2: #f0efec;
+  --line: #e4e3de;
+  --line-strong: #cfcec8;
+  --fg: #0b0b0b;
+  --fg-2: #52514e;
+  --fg-3: #767570;
+  --accent: #2a78d6;
+  --accent-soft: #e3eefb;
+  --on-accent: #ffffff;
+  --add: #1a7f37;
+  --del: #cf222e;
+  --warn: #9a6700;
+  --warn-soft: #fff4d6;
+  --lane-1: #2a78d6;
+  --lane-2: #eb6834;
+  --lane-3: #1baf7a;
+  --lane-4: #eda100;
+  --lane-5: #e87ba4;
+  --lane-6: #008300;
+  --lane-7: #4a3aa7;
+  --lane-8: #e34948;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --bg: #111110;
+    --surface: #1a1a19;
+    --surface-2: #242422;
+    --line: #2f2f2c;
+    --line-strong: #45453f;
+    --fg: #f4f4f2;
+    --fg-2: #c3c2b7;
+    --fg-3: #92918a;
+    --accent: #3987e5;
+    --accent-soft: #1b2a3d;
+    --on-accent: #ffffff;
+    --add: #3fb950;
+    --del: #f85149;
+    --warn: #d29922;
+    --warn-soft: #2e2412;
+    --lane-1: #3987e5;
+    --lane-2: #d95926;
+    --lane-3: #199e70;
+    --lane-4: #c98500;
+    --lane-5: #d55181;
+    --lane-6: #008300;
+    --lane-7: #9085e9;
+    --lane-8: #e66767;
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #111110;
+  --surface: #1a1a19;
+  --surface-2: #242422;
+  --line: #2f2f2c;
+  --line-strong: #45453f;
+  --fg: #f4f4f2;
+  --fg-2: #c3c2b7;
+  --fg-3: #92918a;
+  --accent: #3987e5;
+  --accent-soft: #1b2a3d;
+  --on-accent: #ffffff;
+  --add: #3fb950;
+  --del: #f85149;
+  --warn: #d29922;
+  --warn-soft: #2e2412;
+  --lane-1: #3987e5;
+  --lane-2: #d95926;
+  --lane-3: #199e70;
+  --lane-4: #c98500;
+  --lane-5: #d55181;
+  --lane-6: #008300;
+  --lane-7: #9085e9;
+  --lane-8: #e66767;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-fg: var(--fg);
+  --color-fg-2: var(--fg-2);
+  --color-fg-3: var(--fg-3);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent: var(--on-accent);
+  --color-add: var(--add);
+  --color-del: var(--del);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --font-sans: ui-sans-serif, system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Code', 'JetBrains Mono', Consolas, monospace;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
