@@ -1,13 +1,14 @@
-import { ArrowLeft, ArrowRight, ExternalLink, Settings2 } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Settings2 } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router'
 
-import type { CellStatus, LagEdge, ProbeSample, ServiceState } from '../../../shared/status'
-import { useClientDetail } from '../api'
+import type { CellStatus, ProbeSample, ServiceState } from '../../../shared/status'
+import { useBoard, useClientDetail } from '../api'
+import { PromotionGraph } from '../components/PromotionGraph'
 import { Shell } from '../components/Shell'
 import { Monogram, SERVICE_TAG, SOFT, StatusDot, TEXT } from '../components/StatusBits'
 import { Button, Card, cn, Empty, ErrorBox, Spinner } from '../components/ui'
-import { formatDateTime, formatNumber, plural, timeAgo } from '../lib/format'
+import { formatDateTime, formatNumber, timeAgo } from '../lib/format'
 
 /** One environment, expanded: status, what is waiting, and what was checked. */
 function EnvCard({ cell }: { cell: CellStatus }) {
@@ -25,56 +26,6 @@ function EnvCard({ cell }: { cell: CellStatus }) {
         </p>
       )}
     </div>
-  )
-}
-
-/** A single hop: what is waiting to move from one environment into the next. */
-function Hop({ edge, repoId, detailed }: { edge: LagEdge; repoId: string; detailed: boolean }) {
-  const waiting = edge.realCommits > 0
-  const body = (
-    <>
-      <span className="flex items-center gap-2">
-        <span className="text-xs text-fg-3">{edge.fromEnv}</span>
-        <ArrowRight className="size-3.5 text-fg-3" aria-hidden />
-        <span className="text-xs font-medium">{edge.toEnv}</span>
-      </span>
-      {edge.error ? (
-        <span className="mt-1 block text-[13px] text-fg-3">{edge.error}</span>
-      ) : (
-        <span
-          className={cn(
-            'mt-1 block text-[13px] font-semibold',
-            edge.overThreshold ? 'text-warn' : waiting ? 'text-fg' : 'text-add',
-          )}
-        >
-          {waiting ? `${plural(edge.realCommits, 'change')} waiting` : 'In step'}
-        </span>
-      )}
-      {detailed && waiting && !edge.error && (
-        <span className="mt-1 block text-xs text-fg-3">
-          {plural(edge.filesChanged, 'file')}
-          {edge.mergeCommits > 0 && ` · ${plural(edge.mergeCommits, 'merge')}`}
-          {edge.oldestWaitingAt && ` · oldest ${timeAgo(edge.oldestWaitingAt)}`}
-        </span>
-      )}
-      {detailed && (
-        <span className="mt-1.5 block truncate font-mono text-[11px] text-fg-3">
-          {edge.fromBranch} → {edge.toBranch}
-        </span>
-      )}
-    </>
-  )
-
-  if (edge.error) return <div className="rounded-lg border border-line bg-surface-2/40 px-3 py-2.5">{body}</div>
-
-  return (
-    <Link
-      to={`/r/${repoId}/compare?base=${encodeURIComponent(edge.toRef || edge.toBranch)}&head=${encodeURIComponent(edge.fromRef || edge.fromBranch)}`}
-      className="block rounded-lg border border-line bg-surface-2/40 px-3 py-2.5 transition-colors hover:border-line-strong"
-      title="Open the full comparison"
-    >
-      {body}
-    </Link>
   )
 }
 
@@ -124,7 +75,9 @@ function ServiceRow({ service, samples }: { service: ServiceState; samples: Prob
 export function ClientPage() {
   const { clientId = '' } = useParams()
   const detail = useClientDetail(clientId)
+  const board = useBoard()
   const [detailed, setDetailed] = useState(false)
+  const [repoId, setRepoId] = useState<string | null>(null)
 
   if (detail.isPending)
     return (
@@ -145,6 +98,9 @@ export function ClientPage() {
   const { row, changes, history } = detail.data
   const cells = row.cells.filter((cell): cell is CellStatus => cell !== null)
   const repos = [...new Map(cells.flatMap((c) => c.tips).map((t) => [t.repoId, t.repoName])).entries()]
+  // The shared development row is the source every client is measured from.
+  const shared = board.data?.rows.find((r) => r.kind === 'shared' && r.id === 'development')
+  const devCell = shared?.cells[board.data?.columns.indexOf('development') ?? 0] ?? null
 
   return (
     <Shell
@@ -177,36 +133,53 @@ export function ClientPage() {
 
       <section className="mt-6">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-bold">How changes reach this client</h2>
-          <Button variant="ghost" onClick={() => setDetailed(!detailed)}>
-            {detailed ? 'Hide branch detail' : 'Show branch detail'}
-          </Button>
+          <div>
+            <h2 className="text-sm font-bold">How changes reach this client</h2>
+            <p className="mt-0.5 text-[13px] text-fg-3">
+              Every line carries what is waiting on that step. Click a number to see the commits.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              onClick={() => setRepoId(null)}
+              className={cn(
+                'rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors',
+                repoId === null
+                  ? 'border-accent bg-accent-soft text-accent'
+                  : 'border-line text-fg-3 hover:border-line-strong hover:text-fg',
+              )}
+            >
+              Everything
+            </button>
+            {repos.map(([id, name]) => (
+              <button
+                key={id}
+                onClick={() => setRepoId(id)}
+                className={cn(
+                  'rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors',
+                  repoId === id
+                    ? 'border-accent bg-accent-soft text-accent'
+                    : 'border-line text-fg-3 hover:border-line-strong hover:text-fg',
+                )}
+              >
+                {name}
+              </button>
+            ))}
+            <button
+              onClick={() => setDetailed(!detailed)}
+              className={cn(
+                'ml-1 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors',
+                detailed
+                  ? 'border-accent bg-accent-soft text-accent'
+                  : 'border-line text-fg-3 hover:border-line-strong hover:text-fg',
+              )}
+            >
+              Branch names
+            </button>
+          </div>
         </div>
-        <div className="grid gap-3 lg:grid-cols-3">
-          {repos.map(([repoId, repoName]) => {
-            const edges = cells.flatMap((cell) => cell.lag.filter((edge) => edge.repoId === repoId))
-            if (edges.length === 0) return null
-            // Follow the promotion links so hops read in the order a change travels.
-            const byFrom = new Map(edges.map((edge) => [edge.fromEnv, edge]))
-            const targets = new Set(edges.map((edge) => edge.toEnv))
-            const chain: LagEdge[] = []
-            const seen = new Set<string>()
-            let current: LagEdge | undefined = edges.find((edge) => !targets.has(edge.fromEnv)) ?? edges[0]
-            while (current && !seen.has(current.toEnv)) {
-              seen.add(current.toEnv)
-              chain.push(current)
-              current = byFrom.get(current.toEnv)
-            }
-            return (
-              <Card key={repoId} title={repoName} subtitle="One step per promotion">
-                <div className="space-y-2">
-                  {chain.map((edge) => (
-                    <Hop key={`${edge.fromEnv}-${edge.toEnv}`} edge={edge} repoId={repoId} detailed={detailed} />
-                  ))}
-                </div>
-              </Card>
-            )
-          })}
+        <div className="glass rounded-lg border border-line bg-card p-5">
+          <PromotionGraph cells={cells} devCell={devCell} repoId={repoId} detailed={detailed} />
         </div>
       </section>
 
