@@ -13,6 +13,7 @@ import {
   useSuggestedServices,
 } from '../api'
 import { Shell } from '../components/Shell'
+import { Combobox } from '../components/Combobox'
 import { SERVICE_TAG } from '../components/StatusBits'
 import { Button, Card, cn, Empty, ErrorBox, Spinner } from '../components/ui'
 import { timeAgo } from '../lib/format'
@@ -193,6 +194,7 @@ export function WizardPage() {
   const setStep = (next: number) => setParams({ step: String(next) }, { replace: true })
   const [draft, setDraft] = useState<Draft | null>(null)
   const [domainFor, setDomainFor] = useState<EnvKind | null>(null)
+  const [repoFilter, setRepoFilter] = useState('')
 
   const existing = clients.data?.find((candidate) => candidate.id === clientId)
   const current = draft ?? (existing ? fromClient(existing) : editing ? null : blankDraft())
@@ -309,7 +311,20 @@ export function WizardPage() {
             <Empty>No local repos yet. Add them from the repo tools first.</Empty>
           ) : (
             <ul className="space-y-1.5">
-              {localRepos.map((repo) => (
+              <li className="pb-1">
+                <input
+                  value={repoFilter}
+                  onChange={(e) => setRepoFilter(e.target.value)}
+                  placeholder="Filter repositories…"
+                  aria-label="Filter repositories"
+                  className={inputClass}
+                />
+              </li>
+              {localRepos
+                .filter((repo) =>
+                  `${repo.name} ${repo.path}`.toLowerCase().includes(repoFilter.trim().toLowerCase()),
+                )
+                .map((repo) => (
                 <li key={repo.id}>
                   <label className="flex items-center gap-2 text-sm">
                     <input
@@ -389,28 +404,32 @@ export function WizardPage() {
                           </button>
                         ))}
                       </div>
-                      <select
-                        value=""
-                        onChange={(e) => {
-                          if (!e.target.value) return
-                          updateEnv(kind, {
-                            branches: {
-                              ...current.envs[kind].branches,
-                              [repoId]: [...picked, e.target.value],
-                            },
-                          })
-                        }}
-                        className="mt-1.5 h-9 w-full rounded-lg border border-line bg-surface-2/50 px-2.5 text-sm"
-                      >
-                        <option value="">Add a branch…</option>
-                        {list
-                          .filter((branch) => !picked.includes(branch.name))
-                          .map((branch) => (
-                            <option key={branch.name} value={branch.name}>
-                              {branch.name} — {TRIGGER_NOTE[branch.trigger].text}, {timeAgo(branch.date)}
-                            </option>
-                          ))}
-                      </select>
+                      <div className="mt-1.5">
+                        <Combobox
+                          placeholder={`Add a branch from ${repoId}…`}
+                          empty="No branch matches"
+                          options={list.map((branch) => ({
+                            value: branch.name,
+                            label: branch.name,
+                            selected: picked.includes(branch.name),
+                            meta: (
+                              <span className={TRIGGER_NOTE[branch.trigger].className}>
+                                {TRIGGER_NOTE[branch.trigger].text} · {timeAgo(branch.date)}
+                              </span>
+                            ),
+                          }))}
+                          onSelect={(name) =>
+                            updateEnv(kind, {
+                              branches: {
+                                ...current.envs[kind].branches,
+                                [repoId]: picked.includes(name)
+                                  ? picked.filter((b) => b !== name)
+                                  : [...picked, name],
+                              },
+                            })
+                          }
+                        />
+                      </div>
                       {picked.map((name) => {
                         const found = list.find((branch) => branch.name === name)
                         if (!found || found.trigger === 'push') return null

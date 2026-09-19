@@ -139,9 +139,10 @@ export function verdict(input: {
   if (waiting.length > 0) {
     const from = sourceLabel ? ` from ${sourceLabel.toLowerCase()}` : ''
     const age = oldest !== undefined && oldest >= thresholds.days ? `, oldest ${plural(oldest, 'day')}` : ''
-    // Either one step is enormous, or the environment's total backlog is. Both are past
-    // the point where a nudge is the right response.
-    const far = waiting.some((edge) => edge.farBehind) || commits >= thresholds.far
+    // One repository being this far behind is the signal. Summing across repositories
+    // would escalate an environment where every part is merely a little behind, which is
+    // a different and much less urgent situation.
+    const far = waiting.some((edge) => edge.farBehind)
     return {
       colour: far ? 'alert' : 'yellow',
       word: far ? 'Far behind' : 'Behind',
