@@ -69,6 +69,8 @@ export interface ClientConfig {
   name: string
   region: string
   thresholds?: Partial<Thresholds>
+  /** Pinned clients are shown first, in their own section. */
+  pinned?: boolean
   environments: EnvironmentConfig[]
 }
 
@@ -143,6 +145,8 @@ export interface CellStatus {
   ref: string
   envKind: EnvKind
   label: string
+  /** Share of probes in the last day that answered, or `null` when nothing was probed. */
+  uptime: number | null
   colour: Colour
   /** One word for the wall screen: Working, Behind, Down, Checking. */
   word: string
@@ -162,6 +166,7 @@ export interface BoardRow {
   name: string
   region: string
   kind: 'client' | 'shared'
+  pinned: boolean
   /** Aligned with `BoardResponse.columns`; `null` where the client has no such environment. */
   cells: (CellStatus | null)[]
 }
@@ -172,6 +177,8 @@ export interface BoardResponse {
   rows: BoardRow[]
   /** Rows with at least one red or yellow cell. */
   needsAttention: number
+  /** Uptime across every probe in the last day, 0 to 1, or null before any probe. */
+  uptime: number | null
   /** False when this machine could not reach the control URL, so colours are being held. */
   probeHostReachable: boolean
   /** Set when no config file exists yet. */

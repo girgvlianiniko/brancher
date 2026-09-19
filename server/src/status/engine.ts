@@ -30,6 +30,7 @@ import {
   recordChange,
   recordProbe,
   saveServiceState,
+  uptimeFor,
 } from './store'
 import { readTriggers } from './triggers'
 
@@ -144,7 +145,17 @@ function buildCell(row: Row, env: EnvironmentConfig): CellStatus {
     sourceLabel: source?.label ?? null,
   })
 
-  return { ref, envKind: env.kind, label: env.label, ...decision, services, lag, tips, triggers }
+  return {
+    ref,
+    envKind: env.kind,
+    label: env.label,
+    uptime: uptimeFor(services.map((service) => service.ref), 24),
+    ...decision,
+    services,
+    lag,
+    tips,
+    triggers,
+  }
 }
 
 function buildRow(row: Row): BoardRow {
@@ -153,6 +164,7 @@ function buildRow(row: Row): BoardRow {
     name: row.name,
     region: row.region,
     kind: row.kind,
+    pinned: row.pinned,
     cells: ENV_KINDS.map((kind) => {
       const env = row.environments.find((candidate) => candidate.kind === kind)
       return env ? buildCell(row, env) : null
@@ -196,6 +208,10 @@ function rebuild(): BoardResponse {
     needsAttention: rows.filter((row) =>
       row.cells.some((cell) => cell?.colour === 'red' || cell?.colour === 'yellow'),
     ).length,
+    uptime: uptimeFor(
+      rows.flatMap((row) => row.cells.flatMap((cell) => cell?.services.map((s) => s.ref) ?? [])),
+      24,
+    ),
     probeHostReachable,
     configured: getConfig() !== null,
   }

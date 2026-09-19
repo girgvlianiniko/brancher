@@ -11,7 +11,7 @@ import { GitCommandError } from './git/exec'
 import { addRepo, getRepo, listRepos, removeRepo } from './repos'
 import { sourceFor } from './sources'
 import { getBoard, getClientDetail, getRecentChanges, refreshNow, startEngine } from './status/engine'
-import { getConfig, parseClient, removeClient, upsertClient } from './status/config'
+import { getConfig, parseClient, removeClient, setLayout, upsertClient } from './status/config'
 import { discoverBranches, discoverTriggers, probeUrl, suggestServices } from './status/discover'
 
 const app = new Hono().basePath('/api')
@@ -30,6 +30,14 @@ app.post('/board/refresh', async (c) => {
 app.get('/board/changes', (c) => c.json(getRecentChanges(Number(c.req.query('limit')) || 50)))
 
 app.get('/clients', (c) => c.json(getConfig()?.clients ?? []))
+
+app.put('/board/layout', async (c) => {
+  const body = (await c.req.json().catch(() => null)) as { order?: unknown; pinned?: unknown } | null
+  const ids = (value: unknown) =>
+    Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []
+  setLayout(ids(body?.order), ids(body?.pinned))
+  return c.json(getBoard())
+})
 
 app.put('/clients/:id', async (c) => {
   const body = (await c.req.json().catch(() => null)) as unknown

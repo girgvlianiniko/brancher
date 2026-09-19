@@ -1,120 +1,19 @@
-import { AlertTriangle, Boxes, CheckCircle2, Plus, Search, Settings2, XCircle } from 'lucide-react'
+import { AlertTriangle, Boxes, CheckCircle2, Plus, Search, XCircle } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 
-import type { BoardRow, CellStatus, Colour, EnvKind } from '../../../shared/status'
-import { useBoard } from '../api'
+import type { BoardRow, CellStatus } from '../../../shared/status'
+import { useBoard, useSetLayout } from '../api'
+import { ClientMatrixCard, worstOf } from '../components/ClientMatrix'
 import { Shell } from '../components/Shell'
 import { StatTile } from '../components/StatTile'
-import { Monogram, ServiceLine, StatusDot, StatusLine, TEXT } from '../components/StatusBits'
-import {
-  VariantBars,
-  VariantExceptions,
-  VariantGrid,
-  VariantLines,
-} from '../components/variants'
+import { StatusDot, TEXT } from '../components/StatusBits'
 import { Button, cn, ErrorBox, Spinner } from '../components/ui'
-import { timeAgo } from '../lib/format'
-
-const SLOTS: EnvKind[] = ['staging', 'production', 'mirror']
-const SLOT_LABEL: Record<EnvKind, string> = {
-  development: 'Development',
-  staging: 'Staging',
-  production: 'Production',
-  mirror: 'Mirror',
-}
+import { percent, timeAgo } from '../lib/format'
 
 type Filter = 'all' | 'attention' | 'working' | 'down'
 
-const worstOf = (cells: (CellStatus | null)[]): Colour => {
-  const colours = cells.filter((c): c is CellStatus => c !== null).map((c) => c.colour)
-  return colours.includes('red')
-    ? 'red'
-    : colours.includes('yellow')
-      ? 'yellow'
-      : colours.includes('green')
-        ? 'green'
-        : 'grey'
-}
-
-function EnvRow({ cell, kind, kiosk }: { cell: CellStatus | null; kind: EnvKind; kiosk: boolean }) {
-  return (
-    <div className="flex min-h-12 items-center justify-between gap-3 py-2">
-      <span className={cn('shrink-0 text-fg-3', kiosk ? 'text-base' : 'text-[13px]')}>{SLOT_LABEL[kind]}</span>
-      {cell ? (
-        <span className="min-w-0 text-right">
-          <StatusLine cell={cell} className={cn('justify-end', kiosk && 'text-base')} />
-          {(cell.autoDeploy === 'off' || cell.autoDeploy === 'mixed') && (
-            <span className="mt-0.5 block text-[11px] text-fg-3 italic">
-              {cell.autoDeploy === 'off' ? 'deploys by hand' : 'partly by hand'}
-            </span>
-          )}
-        </span>
-      ) : (
-        <span className={cn('text-fg-3/50', kiosk ? 'text-base' : 'text-[13px]')}>not used</span>
-      )}
-    </div>
-  )
-}
-
-function ClientCard({
-  row,
-  columns,
-  kiosk,
-  index,
-}: {
-  row: BoardRow
-  columns: EnvKind[]
-  kiosk: boolean
-  index: number
-}) {
-  const cellFor = (kind: EnvKind) => row.cells[columns.indexOf(kind)] ?? null
-  const overall = worstOf(row.cells)
-  const headline = row.cells.find((c) => c?.colour === overall) ?? null
-  const services = row.cells.filter((c): c is CellStatus => c !== null).flatMap((c) => c.services)
-
-  return (
-    <article
-      className="rise glass group relative flex h-full flex-col rounded-lg border border-line bg-card transition-colors hover:border-line-strong"
-      style={{ animationDelay: `${Math.min(index, 9) * 40}ms` }}
-    >
-      <Link to={`/c/${row.id}`} className="absolute inset-0 rounded-lg" aria-label={`Open ${row.name}`} />
-
-      <header className="flex items-start gap-3 px-4 pt-4">
-        <Monogram name={row.name} id={row.id} size={kiosk ? 'lg' : 'md'} />
-        <div className="min-w-0 flex-1">
-          <h3 className={cn('truncate font-bold tracking-tight', kiosk ? 'text-xl' : 'text-[15px]')}>{row.name}</h3>
-          <p className={cn('truncate text-fg-3', kiosk ? 'text-sm' : 'text-xs')}>
-            {[row.region, headline?.lastDeployedAt && `changed ${timeAgo(headline.lastDeployedAt)}`]
-              .filter(Boolean)
-              .join(' · ')}
-          </p>
-        </div>
-        {!kiosk && (
-          <Link
-            to={`/c/${row.id}/setup`}
-            aria-label={`Edit ${row.name}`}
-            className="relative z-10 grid size-8 place-items-center rounded-lg text-fg-3 opacity-0 transition hover:bg-surface-2 hover:text-fg focus-visible:opacity-100 group-hover:opacity-100"
-          >
-            <Settings2 className="size-4" />
-          </Link>
-        )}
-      </header>
-
-      <div className="mt-3 divide-y divide-line border-t border-line px-4">
-        {SLOTS.map((kind) => (
-          <EnvRow key={kind} cell={cellFor(kind)} kind={kind} kiosk={kiosk} />
-        ))}
-      </div>
-
-      <footer className="mt-auto px-4 pt-2 pb-3.5">
-        <ServiceLine services={services.filter((s, i, all) => all.findIndex((x) => x.kind === s.kind) === i)} />
-      </footer>
-    </article>
-  )
-}
-
-function DevelopmentBar({ cell, kiosk }: { cell: CellStatus; kiosk: boolean }) {
+function DevelopmentBar({ cell }: { cell: CellStatus }) {
   return (
     <div className="glass flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-line bg-card px-4 py-3">
       <span className="flex items-center gap-2 text-sm font-semibold">
@@ -123,34 +22,33 @@ function DevelopmentBar({ cell, kiosk }: { cell: CellStatus; kiosk: boolean }) {
       </span>
       <span className={cn('text-[13px]', TEXT[cell.colour])}>{cell.word}</span>
       <span className="text-[13px] text-fg-3">{cell.sentence}</span>
-      <span className={cn('ml-auto text-fg-3', kiosk ? 'text-sm' : 'text-xs')}>Shared by every client</span>
+      <span className="ml-auto text-xs text-fg-3">Everything below is measured against it</span>
     </div>
   )
 }
 
-const VARIANTS = [
-  { id: 'cards', label: 'A · Cards (current)' },
-  { id: 'lines', label: 'B · One line each' },
-  { id: 'matrix', label: 'C · Part by environment' },
-  { id: 'exceptions', label: 'D · Only what is wrong' },
-  { id: 'bars', label: 'E · Bars per part' },
-] as const
-
 export function BoardPage() {
-  const [params, setParams] = useSearchParams()
+  const [params] = useSearchParams()
   const kiosk = params.get('kiosk') === '1'
-  const variant = params.get('v') ?? 'cards'
   const board = useBoard(kiosk ? 20_000 : 30_000)
+  const setLayout = useSetLayout()
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
+  const [dragId, setDragId] = useState<string | null>(null)
+  /** Order held locally while a card is in flight, so dragging feels immediate. */
+  const [draft, setDraft] = useState<string[] | null>(null)
 
-  // A wall screen is usually in a dim room with nobody there to press anything.
   useEffect(() => {
     if (kiosk) document.documentElement.dataset.theme = 'dark'
   }, [kiosk])
 
   const data = board.data
-  const clients = useMemo(() => (data?.rows ?? []).filter((row) => row.kind === 'client'), [data])
+  const clients = useMemo(() => {
+    const rows = (data?.rows ?? []).filter((row) => row.kind === 'client')
+    if (!draft) return rows
+    const byId = new Map(rows.map((row) => [row.id, row]))
+    return draft.map((id) => byId.get(id)).filter((row): row is BoardRow => row !== undefined)
+  }, [data, draft])
 
   const counts = useMemo(() => {
     const colours = clients.map((row) => worstOf(row.cells))
@@ -174,15 +72,51 @@ export function BoardPage() {
     })
   }, [clients, search, filter])
 
-  if (board.isPending) return <Shell title="Status"><Spinner label="Reading status…" /></Shell>
+  const commit = (order: string[], pinned: string[]) => {
+    setDraft(order)
+    setLayout.mutate({ order, pinned }, { onSettled: () => setDraft(null) })
+  }
+
+  const togglePin = (id: string) => {
+    const pinned = new Set(clients.filter((row) => row.pinned).map((row) => row.id))
+    if (pinned.has(id)) pinned.delete(id)
+    else pinned.add(id)
+    commit(
+      clients.map((row) => row.id),
+      [...pinned],
+    )
+  }
+
+  /** Moves the dragged card in front of the one it is hovering. */
+  const reorder = (overId: string) => {
+    if (!dragId || dragId === overId) return
+    const order = clients.map((row) => row.id)
+    const from = order.indexOf(dragId)
+    const to = order.indexOf(overId)
+    if (from === -1 || to === -1) return
+    order.splice(to, 0, ...order.splice(from, 1))
+    setDraft(order)
+  }
+
+  const dropped = () => {
+    if (!dragId) return
+    setDragId(null)
+    if (draft) commit(draft, clients.filter((row) => row.pinned).map((row) => row.id))
+  }
+
+  if (board.isPending)
+    return (
+      <Shell title="Status">
+        <Spinner label="Reading status…" />
+      </Shell>
+    )
   if (board.isError || !data)
     return (
       <Shell title="Status">
         <ErrorBox error={board.error} />
       </Shell>
     )
-
-  if (!data.configured) {
+  if (!data.configured)
     return (
       <Shell title="Status">
         <div className="glass mx-auto mt-8 max-w-md rounded-lg border border-line bg-card px-6 py-10 text-center">
@@ -198,22 +132,52 @@ export function BoardPage() {
         </div>
       </Shell>
     )
-  }
 
   const development = data.rows.find((row) => row.kind === 'shared')
   const developmentCell = development?.cells[data.columns.indexOf('development')] ?? null
+  const pinned = visible.filter((row) => row.pinned)
+  const rest = visible.filter((row) => !row.pinned)
 
-  const grid = (
-    <div
-      className={cn(
-        'grid gap-4',
-        kiosk ? 'sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4' : 'sm:grid-cols-2 xl:grid-cols-3',
-      )}
-    >
-      {visible.map((row, i) => (
-        <ClientCard key={row.id} row={row} columns={data.columns} kiosk={kiosk} index={i} />
+  const section = (rows: BoardRow[]) => (
+    <div className={cn('grid gap-4', kiosk ? 'md:grid-cols-2 2xl:grid-cols-3' : 'xl:grid-cols-2 2xl:grid-cols-3')}>
+      {rows.map((row) => (
+        <ClientMatrixCard
+          key={row.id}
+          row={row}
+          columns={data.columns}
+          onTogglePin={togglePin}
+          onDragStart={setDragId}
+          onDragOver={reorder}
+          onDrop={dropped}
+          dragging={dragId === row.id}
+        />
       ))}
     </div>
+  )
+
+  const heading = (label: string, count: number) => (
+    <h2 className="mb-2.5 flex items-center gap-2 text-[11px] font-semibold tracking-wider text-fg-3 uppercase">
+      {label}
+      <span className="rounded bg-surface-2 px-1.5 py-0.5 text-[10px] text-fg-3">{count}</span>
+    </h2>
+  )
+
+  const body = (
+    <>
+      {pinned.length > 0 && (
+        <section className="mb-6">
+          {heading('Pinned', pinned.length)}
+          {section(pinned)}
+        </section>
+      )}
+      {rest.length > 0 && (
+        <section>
+          {pinned.length > 0 && heading('Everyone else', rest.length)}
+          {section(rest)}
+        </section>
+      )}
+      {visible.length === 0 && <p className="py-12 text-center text-sm text-fg-3">No clients match.</p>}
+    </>
   )
 
   if (kiosk) {
@@ -221,7 +185,7 @@ export function BoardPage() {
       <div className="min-h-screen bg-bg px-6 py-6">
         <div className="mb-5 flex items-baseline justify-between">
           <h1 className="text-3xl font-bold tracking-tight">
-            {counts.down > 0 || counts.attention > 0
+            {counts.down + counts.attention > 0
               ? `${counts.down + counts.attention} of ${counts.total} need a look`
               : 'All clear'}
           </h1>
@@ -229,10 +193,10 @@ export function BoardPage() {
         </div>
         {developmentCell && (
           <div className="mb-4">
-            <DevelopmentBar cell={developmentCell} kiosk />
+            <DevelopmentBar cell={developmentCell} />
           </div>
         )}
-        {grid}
+        {body}
       </div>
     )
   }
@@ -240,7 +204,9 @@ export function BoardPage() {
   return (
     <Shell
       title="Status"
-      subtitle={`${counts.total} clients · checked ${timeAgo(data.generatedAt)}`}
+      subtitle={`${counts.total} clients · checked ${timeAgo(data.generatedAt)}${
+        data.uptime !== null ? ` · ${percent(data.uptime)} up over the last day` : ''
+      }`}
       actions={
         <Link to="/c/new">
           <Button variant="primary">
@@ -256,13 +222,7 @@ export function BoardPage() {
       )}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile
-          icon={Boxes}
-          value={counts.total}
-          label="Clients"
-          active={filter === 'all'}
-          onClick={() => setFilter('all')}
-        />
+        <StatTile icon={Boxes} value={counts.total} label="Clients" active={filter === 'all'} onClick={() => setFilter('all')} />
         <StatTile
           icon={CheckCircle2}
           value={counts.working}
@@ -291,12 +251,12 @@ export function BoardPage() {
 
       {developmentCell && (
         <div className="mt-4">
-          <DevelopmentBar cell={developmentCell} kiosk={false} />
+          <DevelopmentBar cell={developmentCell} />
         </div>
       )}
 
-      <div className="mt-4 mb-4">
-        <label className="relative block">
+      <div className="mt-4 mb-5 flex flex-wrap items-center gap-3">
+        <label className="relative min-w-56 flex-1">
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-3" aria-hidden />
           <input
             value={search}
@@ -306,43 +266,12 @@ export function BoardPage() {
             className="h-10 w-full rounded-lg border border-line bg-card pr-3 pl-9 text-sm placeholder:text-fg-3 focus:border-accent focus:outline-none"
           />
         </label>
+        <p className="text-xs text-fg-3">
+          Numbers are changes waiting to deploy. Drag a card to reorder, use the star to pin.
+        </p>
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <span className="text-xs text-fg-3">Layout</span>
-        {VARIANTS.map((option) => (
-          <button
-            key={option.id}
-            onClick={() => setParams(option.id === 'cards' ? {} : { v: option.id }, { replace: true })}
-            className={cn(
-              'rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors',
-              variant === option.id
-                ? 'border-accent bg-accent-soft text-accent'
-                : 'border-line text-fg-3 hover:border-line-strong hover:text-fg',
-            )}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
-
-      {visible.length === 0 ? (
-        <p className="py-12 text-center text-sm text-fg-3">No clients match.</p>
-      ) : variant === 'lines' ? (
-        <VariantLines rows={visible} columns={data.columns} />
-      ) : variant === 'matrix' ? (
-        <VariantGrid rows={visible} columns={data.columns} />
-      ) : variant === 'exceptions' ? (
-        <VariantExceptions rows={visible} columns={data.columns} />
-      ) : variant === 'bars' ? (
-        <VariantBars rows={visible} columns={data.columns} />
-      ) : (
-        grid
-      )}
-
-      <p className="mt-8 text-xs text-fg-3">
-        Add <code className="font-mono">?kiosk=1</code> to the address for the office screen.
-      </p>
+      {body}
     </Shell>
   )
 }

@@ -33,6 +33,7 @@ export interface Row {
   name: string
   region: string
   kind: 'client' | 'shared'
+  pinned: boolean
   thresholds: Thresholds
   environments: EnvironmentConfig[]
 }
@@ -166,6 +167,7 @@ export function parseClient(raw: unknown, at: string): ClientConfig {
     id,
     name: text(value.name, `${at}.name`),
     region: typeof value.region === 'string' ? value.region.trim() : '',
+    ...(flag(value.pinned, false) ? { pinned: true } : {}),
     ...(thresholds
       ? {
           thresholds: {
@@ -256,6 +258,31 @@ export function upsertClient(client: ClientConfig): BoardConfig {
   return saveConfig({ ...current, clients })
 }
 
+/**
+ * Reorders the client list and sets which are pinned. The array order is the board
+ * order, so dragging a card is a reorder of this file and everyone sees it.
+ */
+export function setLayout(order: string[], pinned: string[]): BoardConfig {
+  const current = config
+  if (!current) throw badRequest('No board config yet')
+  const known = new Map(current.clients.map((client) => [client.id, client]))
+  for (const id of order) if (!known.has(id)) throw badRequest(`No client with id "${id}"`)
+
+  const pinnedSet = new Set(pinned)
+  const ordered = [
+    ...order.map((id) => known.get(id)!),
+    // Anything the caller did not mention keeps its place at the end.
+    ...current.clients.filter((client) => !order.includes(client.id)),
+  ]
+  return saveConfig({
+    ...current,
+    clients: ordered.map((client) => {
+      const { pinned: _was, ...rest } = client
+      return pinnedSet.has(client.id) ? { ...rest, pinned: true } : rest
+    }),
+  })
+}
+
 export function removeClient(id: string): BoardConfig {
   const current = config
   if (!current) throw badRequest('No board config yet')
@@ -271,6 +298,7 @@ export function getRows(): Row[] {
     name: 'Development',
     region: 'Shared',
     kind: 'shared',
+    pinned: false,
     thresholds: current.thresholds,
     environments: [current.development],
   }
@@ -279,6 +307,7 @@ export function getRows(): Row[] {
     name: client.name,
     region: client.region,
     kind: 'client',
+    pinned: client.pinned === true,
     thresholds: { ...current.thresholds, ...client.thresholds },
     environments: client.environments,
   }))

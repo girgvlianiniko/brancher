@@ -73,6 +73,9 @@ const selectHistory = db.prepare(
 const selectChanges = db.prepare('SELECT * FROM status_changes WHERE row_id = ? ORDER BY at DESC LIMIT ?')
 const selectAllChanges = db.prepare('SELECT * FROM status_changes ORDER BY at DESC LIMIT ?')
 const deleteOldSamples = db.prepare('DELETE FROM probe_samples WHERE at < ?')
+const selectUptime = db.prepare(
+  'SELECT COUNT(*) AS total, SUM(ok) AS good FROM probe_samples WHERE service_ref = ? AND at >= ?',
+)
 
 export interface StoredServiceState {
   status: ServiceStatus
@@ -152,6 +155,20 @@ export function historyFor(serviceRef: string, hours: number): ProbeSample[] {
     latencyMs: asNullableNumber(raw.latency_ms),
     error: raw.error === null || raw.error === undefined ? null : asText(raw.error),
   }))
+}
+
+/** Share of probes that answered in the window, or `null` when there were none. */
+export function uptimeFor(serviceRefs: string[], hours: number): number | null {
+  const since = new Date(Date.now() - hours * 3600_000).toISOString()
+  let total = 0
+  let good = 0
+  for (const ref of serviceRefs) {
+    const row = selectUptime.get(ref, since) as SqlRow | undefined
+    if (!row) continue
+    total += asNumber(row.total)
+    good += asNumber(row.good)
+  }
+  return total === 0 ? null : good / total
 }
 
 export function pruneOldSamples() {

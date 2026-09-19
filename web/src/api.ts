@@ -198,3 +198,13 @@ export function useDeleteClient() {
 
 export const useClients = () =>
   useQuery({ queryKey: ['clients'], queryFn: () => request<ClientConfig[]>('/clients') })
+
+/** Pin and order are stored server-side, so the board looks the same for everyone. */
+export function useSetLayout() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (layout: { order: string[]; pinned: string[] }) =>
+      request<BoardResponse>('/board/layout', { method: 'PUT', body: JSON.stringify(layout) }),
+    onSuccess: (board) => queryClient.setQueryData(['board'], board),
+  })
+}
