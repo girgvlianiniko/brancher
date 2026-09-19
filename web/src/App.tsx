@@ -4,6 +4,7 @@ import { useRepos } from './api'
 import { Sidebar } from './components/Sidebar'
 import { Empty, ErrorBox, Spinner } from './components/ui'
 import { BoardPage } from './pages/BoardPage'
+import { ClientPage } from './pages/ClientPage'
 import { RepoPage } from './pages/RepoPage'
 
 /** Landing spot for the repo tools: the first repo in the list. */
@@ -35,6 +36,7 @@ export function App() {
   return (
     <Routes>
       <Route path="/" element={<BoardPage />} />
+      <Route path="/c/:clientId" element={<ClientPage />} />
       <Route
         path="/r"
         element={

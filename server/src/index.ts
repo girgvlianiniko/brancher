@@ -10,7 +10,7 @@ import { assertRef, badRequest, HttpError } from './errors'
 import { GitCommandError } from './git/exec'
 import { addRepo, getRepo, listRepos, removeRepo } from './repos'
 import { sourceFor } from './sources'
-import { getBoard, refreshNow, startEngine } from './status/engine'
+import { getBoard, getClientDetail, getRecentChanges, refreshNow, startEngine } from './status/engine'
 
 const app = new Hono().basePath('/api')
 
@@ -23,6 +23,13 @@ app.get('/board', (c) => c.json(getBoard()))
 app.post('/board/refresh', async (c) => {
   await refreshNow()
   return c.json(getBoard())
+})
+
+app.get('/board/changes', (c) => c.json(getRecentChanges(Number(c.req.query('limit')) || 50)))
+
+app.get('/clients/:id', (c) => {
+  const hours = Number(c.req.query('hours'))
+  return c.json(getClientDetail(c.req.param('id'), Number.isFinite(hours) && hours > 0 ? Math.min(hours, 720) : 24))
 })
 
 app.post('/repos', async (c) => {

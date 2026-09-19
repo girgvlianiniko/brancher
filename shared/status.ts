@@ -98,6 +98,9 @@ export interface LagEdge {
   toEnv: EnvKind
   fromBranch: string
   toBranch: string
+  /** The ref that was actually measured, e.g. `origin/prod_korean`. Use it for links. */
+  fromRef: string
+  toRef: string
   /** Commits waiting that actually change files. Merge commits are noise. */
   realCommits: number
   mergeCommits: number

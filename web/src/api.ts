@@ -1,6 +1,6 @@
 import { keepPreviousData, QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import type { BoardResponse } from '../../shared/status'
+import type { BoardResponse, ClientDetail } from '../../shared/status'
 import type {
   AddRepoInput,
   BranchesResponse,
@@ -119,3 +119,10 @@ export function useRefreshBoard() {
     },
   })
 }
+
+export const useClientDetail = (id: string, hours = 24) =>
+  useQuery({
+    queryKey: ['client', id, hours],
+    queryFn: () => request<ClientDetail>(`/clients/${id}?hours=${hours}`),
+    refetchInterval: 30_000,
+  })

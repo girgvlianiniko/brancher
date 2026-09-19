@@ -271,6 +271,8 @@ async function refreshLag() {
           toEnv: env.kind,
           fromBranch: from?.branch ?? '',
           toBranch: to?.branch ?? '',
+          fromRef: '',
+          toRef: '',
           realCommits: 0,
           mergeCommits: 0,
           filesChanged: 0,
@@ -292,6 +294,8 @@ async function refreshLag() {
         const known = tipsByRepo.get(binding.repoId)
         const fromRef = known?.get(from.branch)?.ref ?? from.branch
         const toRef = known?.get(to.branch)?.ref ?? to.branch
+        edges[index].fromRef = fromRef
+        edges[index].toRef = toRef
         jobs.push(async () => {
           try {
             const numbers = await lagBetween(repo.path, fromRef, toRef)
