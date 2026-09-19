@@ -228,41 +228,53 @@ export function PromotionGraph({
           const incoming = edges.filter((edge) => edge.to === node.kind)
           const state = nodeState(node.cell, role, incoming)
           const branch = node.cell?.tips.find((tip) => tip.repoId === repoId && tip.isPrimary)
-          return (
-            <div
-              key={node.kind}
-              className={cn(
-                'absolute flex flex-col justify-center rounded-lg border px-3',
-                state.colour === 'alert'
-                  ? 'border-alert/45 bg-alert-soft/30'
-                  : state.colour === 'yellow'
-                    ? 'border-warn/35 bg-warn-soft/25'
-                    : state.colour === 'red'
-                      ? 'border-del/40 bg-del-soft/25'
-                      : 'border-line bg-surface-2/40',
-              )}
-              style={{ left: x(node.col), top: y(node.row), width: NODE_W, height: NODE_H }}
-            >
+
+          const tone =
+            state.colour === 'alert'
+              ? 'border-alert/45 bg-alert-soft/30'
+              : state.colour === 'yellow'
+                ? 'border-warn/35 bg-warn-soft/25'
+                : state.colour === 'red'
+                  ? 'border-del/40 bg-del-soft/25'
+                  : 'border-line bg-surface-2/40'
+
+          const body = (
+            <>
               <p className="text-[10px] font-semibold tracking-wider text-fg-3 uppercase">{node.label}</p>
               <p className={cn('mt-1 flex items-center gap-1.5 text-[13px] font-bold', TEXT[state.colour])}>
                 <StatusDot colour={state.colour} />
                 {state.word}
               </p>
               {detailed && branch ? (
-                <Link
-                  to={`/r/${repoId}/branches?branch=${encodeURIComponent(branch.branch)}`}
-                  title={`Open ${branch.branch} in the repository tools`}
-                  className="mt-0.5 block truncate font-mono text-[10px] text-fg-3/80 underline decoration-dotted underline-offset-2 hover:text-accent"
-                >
+                <p className="mt-0.5 truncate font-mono text-[10px] text-fg-3/80" title={branch.branch}>
                   {branch.branch}
-                </Link>
+                </p>
               ) : (
                 node.cell?.lastDeployedAt && (
-                  <p className="mt-0.5 truncate text-[10px] text-fg-3">
-                    {timeAgo(node.cell.lastDeployedAt)}
-                  </p>
+                  <p className="mt-0.5 truncate text-[10px] text-fg-3">{timeAgo(node.cell.lastDeployedAt)}</p>
                 )
               )}
+            </>
+          )
+
+          const box = 'absolute flex flex-col justify-center rounded-lg border px-3'
+          const place = { left: x(node.col), top: y(node.row), width: NODE_W, height: NODE_H }
+
+          // The whole box opens the branch behind it, so reaching the commits is one click
+          // from the picture rather than a hunt through the repository tools.
+          return branch ? (
+            <Link
+              key={node.kind}
+              to={`/r/${repoId}/branches?branch=${encodeURIComponent(branch.branch)}`}
+              title={`Open ${branch.branch} in the repository tools`}
+              className={cn(box, tone, 'transition-colors hover:border-accent hover:bg-accent-soft/25')}
+              style={place}
+            >
+              {body}
+            </Link>
+          ) : (
+            <div key={node.kind} className={cn(box, tone)} style={place}>
+              {body}
             </div>
           )
         })}
