@@ -84,6 +84,32 @@ read the message. Anything that recovers inside the window is never sent at all.
 
 Quiet hours hold back everything except a site that is actually down.
 
+### Behind a reverse proxy
+
+If something already terminates TLS, drop the published port and put brancher on the
+proxy's network instead, so the proxy is the only way in rather than a suggestion:
+
+```yaml
+services:
+  brancher:
+    # no ports:
+    networks: [proxy-net]
+networks:
+  proxy-net:
+    external: true
+```
+
+A Caddy site for it, with a password until there are accounts:
+
+```
+brancher.example.com {
+	basic_auth {
+		brancher $2a$14$...        # caddy hash-password
+	}
+	reverse_proxy brancher:4317
+}
+```
+
 ### Before it faces the internet
 
 **There is no authentication.** Anyone who reaches the port sees every client, every
