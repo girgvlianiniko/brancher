@@ -14,6 +14,7 @@ import type {
 } from '../../../shared/types'
 import { cached } from '../cache'
 import { HttpError } from '../errors'
+import { githubToken } from '../settings'
 import type { GitSource } from './types'
 
 const API = 'https://api.github.com'
@@ -51,7 +52,7 @@ interface GhCompare {
   }[]
 }
 
-const token = () => process.env.GITHUB_TOKEN?.trim() || null
+const token = () => githubToken()
 
 /** Branch names keep their slashes in URL paths; everything else is encoded. */
 const encodeRef = (ref: string) => ref.split('/').map(encodeURIComponent).join('/')

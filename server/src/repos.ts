@@ -3,16 +3,14 @@ import path from 'node:path'
 
 import type { AddRepoInput, RepoConfig } from '../../shared/types'
 import { badRequest, HttpError, notFound } from './errors'
+import { dataFile, PROJECT_ROOT, REPOS_DIR } from './paths'
 import { git } from './git/exec'
-
-/** The brancher project folder. */
-export const PROJECT_ROOT = path.resolve(import.meta.dirname, '../..')
 
 /**
  * Repo list, kept in a JSON file for now. This is the first thing that moves to
  * SpacetimeDB once there is a database.
  */
-const DATA_FILE = path.join(PROJECT_ROOT, 'server', 'data', 'repos.json')
+const DATA_FILE = dataFile('repos.json')
 
 const isGitRepo = (dir: string) => existsSync(path.join(dir, '.git'))
 
@@ -48,7 +46,7 @@ function save() {
 
 function load(): RepoConfig[] {
   if (existsSync(DATA_FILE)) return JSON.parse(readFileSync(DATA_FILE, 'utf8')) as RepoConfig[]
-  const scanDir = process.env.BRANCHER_SCAN_DIR || path.dirname(PROJECT_ROOT)
+  const scanDir = process.env.BRANCHER_SCAN_DIR || REPOS_DIR
   return scanForRepos(scanDir)
 }
 

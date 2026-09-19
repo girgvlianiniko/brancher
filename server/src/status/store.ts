@@ -3,9 +3,9 @@ import path from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 
 import type { Colour, EnvKind, ProbeSample, ServiceStatus, StatusChange } from '../../../shared/status'
-import { PROJECT_ROOT } from '../repos'
+import { dataFile } from '../paths'
 
-const DB_FILE = path.join(PROJECT_ROOT, 'server', 'data', 'status.db')
+const DB_FILE = dataFile('status.db')
 /** Probe samples older than this are dropped once a day. */
 const RETENTION_DAYS = 30
 

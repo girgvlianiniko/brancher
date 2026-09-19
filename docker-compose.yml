@@ -1,0 +1,26 @@
+# Brancher: a status board for client environments, plus the git tools behind it.
+# Written for Arcane, but it is an ordinary compose file.
+services:
+  brancher:
+    build: .
+    image: brancher:latest
+    container_name: brancher
+    restart: unless-stopped
+    environment:
+      # A classic or fine-grained token with read access to the repositories you watch.
+      # Set it here and nobody has to paste it into the interface.
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      # Cloned on first boot if they are not on the volume yet. Comma separated.
+      BRANCHER_CLONE: ${BRANCHER_CLONE:-}
+      TZ: ${TZ:-Europe/Tbilisi}
+    volumes:
+      # Client config, the repo list and the status history.
+      - brancher-data:/data
+      # The clones. Give this room: a blobless clone of a busy monorepo is a few hundred MB.
+      - brancher-repos:/repos
+    ports:
+      - "${BRANCHER_PORT:-4317}:4317"
+
+volumes:
+  brancher-data:
+  brancher-repos:

@@ -43,6 +43,39 @@ Configuration and behaviour are described in `STATUS-BOARD-PLAN.md`.
 `?kiosk=1` gives the wall-screen layout, and `?theme=light` or `?theme=dark` pins the theme from the
 address, so a tablet can be pointed at one URL and left alone.
 
+## Running it on a server
+
+The container serves the API and the web app on one port, and keeps two volumes: `/data`
+for the client config, repository list and status history, and `/repos` for the clones.
+
+```sh
+cp .env.example .env     # put a GitHub token in it
+docker compose up -d --build
+```
+
+Nothing else is needed. On first boot it writes the token into git's credential store,
+clones everything named in `BRANCHER_CLONE`, and starts watching.
+
+| Variable | What it does |
+|---|---|
+| `GITHUB_TOKEN` | Read access to the repositories you watch. Also settable in Settings. |
+| `BRANCHER_CLONE` | `owner/repo` list, comma separated, cloned on first boot. |
+| `BRANCHER_PORT` | Published port. Defaults to 4317. |
+| `BRANCHER_DATA_DIR` | Where config and history are written. `/data` in the container. |
+| `BRANCHER_REPOS_DIR` | Where clones live. `/repos` in the container. |
+| `BRANCHER_HOST` | Interface to bind. `0.0.0.0` in the container, loopback otherwise. |
+
+Clones are blobless (`--filter=blob:none`): the full history and every ref, without every
+version of every file. That is everything the board counts and compares, at a fraction of
+the disk and the first-clone wait.
+
+### Before it faces the internet
+
+**There is no authentication.** Anyone who reaches the port sees every client, every
+address, and the commit history of every repository, and can edit or delete clients. Put
+it behind whatever already guards your other services, or keep it on a private network,
+until that is built.
+
 ## Design
 
 The interface follows [Arcane](https://github.com/ofkm/arcane)'s design system: shadcn tokens on a

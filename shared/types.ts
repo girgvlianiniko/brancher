@@ -198,3 +198,21 @@ export interface BranchOverview {
   /** Newest first. */
   recent: Commit[]
 }
+
+export interface SettingsResponse {
+  github: {
+    /** Where the token came from; `environment` cannot be changed from the interface. */
+    source: 'environment' | 'saved' | 'none'
+    /** Last four characters, so an operator can tell which token is in use. */
+    hint: string | null
+  }
+}
+
+export interface GitHubRepoSummary {
+  slug: string
+  description: string | null
+  private: boolean
+  pushedAt: string | null
+  /** Already cloned and registered here. */
+  present: boolean
+}

@@ -14,10 +14,12 @@ import type {
   BranchPosition,
   Comparison,
   Commit,
+  GitHubRepoSummary,
   GraphScope,
   HealthResponse,
   RepoConfig,
   RepoOverview,
+  SettingsResponse,
 } from '../../shared/types'
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -224,3 +226,40 @@ export const useBranchOverview = (repoId: string, branch: string | null) =>
     queryFn: () => request<BranchOverview>(`/repos/${repoId}/branch?name=${encodeURIComponent(branch!)}`),
     placeholderData: keepPreviousData,
   })
+
+// ---------------------------------------------------------------- settings
+
+export const useSettings = () =>
+  useQuery({ queryKey: ['settings'], queryFn: () => request<SettingsResponse>('/settings') })
+
+export function useSaveGitHubToken() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (token: string) =>
+      request<{ account: { login: string } }>('/settings/github', {
+        method: 'PUT',
+        body: JSON.stringify({ token }),
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['settings'] }),
+  })
+}
+
+export const useGitHubRepos = (query: string, enabled: boolean) =>
+  useQuery({
+    queryKey: ['github', 'repos', query],
+    enabled,
+    staleTime: 60_000,
+    queryFn: () => request<GitHubRepoSummary[]>(`/github/repos?q=${encodeURIComponent(query)}`),
+  })
+
+export function useCloneRepo() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (slug: string) =>
+      request<RepoConfig>('/github/clone', { method: 'POST', body: JSON.stringify({ slug }) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['repos'] })
+      return queryClient.invalidateQueries({ queryKey: ['github'] })
+    },
+  })
+}

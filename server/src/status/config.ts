@@ -14,9 +14,9 @@ import type {
 } from '../../../shared/status'
 import { ENV_KINDS, SERVICE_KINDS } from '../../../shared/status'
 import { badRequest } from '../errors'
-import { PROJECT_ROOT } from '../repos'
+import { dataFile } from '../paths'
 
-const CONFIG_FILE = path.join(PROJECT_ROOT, 'server', 'data', 'clients.json')
+const CONFIG_FILE = dataFile('clients.json')
 
 const DEFAULT_THRESHOLDS: Thresholds = { commits: 10, days: 7, far: 100 }
 const DEFAULT_PROBE: ProbeSettings = {
