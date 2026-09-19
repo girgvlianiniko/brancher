@@ -374,7 +374,14 @@ async function refreshTriggers() {
   }
 }
 
+/** Fetches are where a revoked token shows up first, so the last clean pass is worth keeping. */
+let lastCleanFetchAt: string | null = null
+let failingRepos: string[] = []
+
+export const fetchHealth = () => ({ lastCleanFetchAt, failing: [...failingRepos] })
+
 async function fetchRepos() {
+  const failed: string[] = []
   await pooled(
     usedRepoIds().map((repoId) => async () => {
       const repo = localRepo(repoId)
@@ -383,11 +390,14 @@ async function fetchRepos() {
       try {
         await source.fetch?.()
       } catch (error) {
+        failed.push(repoId)
         console.error(`fetch ${repoId}: ${error instanceof Error ? error.message : error}`)
       }
     }),
     3,
   )
+  failingRepos = failed
+  if (failed.length === 0) lastCleanFetchAt = new Date().toISOString()
 }
 
 async function runProbes() {

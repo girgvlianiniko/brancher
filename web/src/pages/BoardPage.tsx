@@ -7,6 +7,7 @@ import { useBoard, useSetLayout } from '../api'
 import { ClientMatrixCard, worstOf } from '../components/ClientMatrix'
 import { Shell } from '../components/Shell'
 import { StatTile } from '../components/StatTile'
+import { TokenNotice } from '../components/TokenNotice'
 import { Button, cn, ErrorBox, Spinner } from '../components/ui'
 import { percent, timeAgo } from '../lib/format'
 
@@ -256,6 +257,8 @@ export function BoardPage() {
         </Link>
       }
     >
+      <TokenNotice />
+
       {!data.probeHostReachable && (
         <div className="mb-5 rounded-lg border border-warn/40 bg-warn-soft/40 px-4 py-3 text-sm">
           This machine cannot reach the internet, so these are the last known colours.

@@ -16,12 +16,20 @@ import { GitCommandError } from './git/exec'
 import { getChannels, parseChannel, publicUrl, removeChannel, upsertChannel } from './alerts/config'
 import { recentDeliveries, sendTest } from './alerts/dispatch'
 import { cloneFromEnvironment, cloneRepo, useGitCredentials } from './clone'
-import { checkToken, listGitHubRepos } from './github'
+import { checkToken, forgetTokenHealth, listGitHubRepos, tokenHealth } from './github'
 import { WEB_DIR } from './paths'
 import { saveSettings, tokenHint, tokenSource } from './settings'
 import { addRepo, getRepo, listRepos, removeRepo } from './repos'
 import { sourceFor } from './sources'
-import { getBoard, getClientDetail, getRecentChanges, refreshNow, siteUrlFor, startEngine } from './status/engine'
+import {
+  fetchHealth,
+  getBoard,
+  getClientDetail,
+  getRecentChanges,
+  refreshNow,
+  siteUrlFor,
+  startEngine,
+} from './status/engine'
 import { resolveIcon } from './status/icon'
 import { getConfig, parseClient, removeClient, setLayout, upsertClient } from './status/config'
 import { discoverBranches, discoverTriggers, probeUrl, suggestServices } from './status/discover'
@@ -62,8 +70,11 @@ api.post('/alerts/test', async (c) => {
   return c.json({ ok: true })
 })
 
-api.get('/settings', (c) =>
-  c.json({ github: { source: tokenSource(), hint: tokenHint() } } satisfies SettingsResponse),
+api.get('/settings', async (c) =>
+  c.json({
+    github: { source: tokenSource(), hint: tokenHint(), health: await tokenHealth() },
+    git: fetchHealth(),
+  } satisfies SettingsResponse),
 )
 
 api.put('/settings/github', async (c) => {
@@ -73,7 +84,8 @@ api.put('/settings/github', async (c) => {
   const account = await checkToken(token)
   saveSettings({ githubToken: token })
   useGitCredentials()
-  return c.json({ account, github: { source: tokenSource(), hint: tokenHint() } })
+  forgetTokenHealth()
+  return c.json({ account, github: { source: tokenSource(), hint: tokenHint(), health: await tokenHealth() } })
 })
 
 api.get('/github/repos', async (c) => c.json(await listGitHubRepos(c.req.query('q') ?? '')))

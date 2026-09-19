@@ -199,12 +199,46 @@ export interface BranchOverview {
   recent: Commit[]
 }
 
+/**
+ * What GitHub says about the token we hold. Everything here comes from one `/user`
+ * call: the body names the account, the headers carry scopes, expiry and rate limit.
+ */
+export interface TokenHealth {
+  /** True when the token still works. */
+  ok: boolean
+  /** Why it does not work, in plain words. Null while it does. */
+  problem: string | null
+  /** Works, but wants attention soon: near expiry, thin rate limit, missing scope. */
+  warning: string | null
+  login: string | null
+  /** Classic token scopes. Null for fine-grained tokens, which do not report any. */
+  scopes: string[] | null
+  expiresAt: string | null
+  /** Negative once expired. Null when the token never expires. */
+  expiresInDays: number | null
+  /** API calls left in the current hour. */
+  rateRemaining: number | null
+  rateLimit: number | null
+  rateResetAt: string | null
+  /** When we last asked GitHub. */
+  checkedAt: string
+}
+
 export interface SettingsResponse {
   github: {
     /** Where the token came from; `environment` cannot be changed from the interface. */
     source: 'environment' | 'saved' | 'none'
     /** Last four characters, so an operator can tell which token is in use. */
     hint: string | null
+    /** Null when no token is set. */
+    health: TokenHealth | null
+  }
+  /** How the background git fetches are going, which is where a bad token first bites. */
+  git: {
+    /** The last pass where every repository fetched cleanly. */
+    lastCleanFetchAt: string | null
+    /** Repository ids whose most recent fetch failed. */
+    failing: string[]
   }
 }
 

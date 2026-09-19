@@ -232,7 +232,12 @@ export const useBranchOverview = (repoId: string, branch: string | null) =>
 // ---------------------------------------------------------------- settings
 
 export const useSettings = () =>
-  useQuery({ queryKey: ['settings'], queryFn: () => request<SettingsResponse>('/settings') })
+  useQuery({
+    queryKey: ['settings'],
+    queryFn: () => request<SettingsResponse>('/settings'),
+    // Slow poll: the board banner has to notice a token that stopped working.
+    refetchInterval: 5 * 60_000,
+  })
 
 export function useSaveGitHubToken() {
   const queryClient = useQueryClient()

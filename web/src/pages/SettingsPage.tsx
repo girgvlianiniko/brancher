@@ -1,10 +1,11 @@
-import { Check, Download, Loader2, Lock, Search } from 'lucide-react'
-import { type FormEvent, useState } from 'react'
+import { AlertTriangle, Check, Download, Loader2, Lock, RefreshCw, Search } from 'lucide-react'
+import { type FormEvent, type ReactNode, useState } from 'react'
 
 import { useCloneRepo, useGitHubRepos, useRepos, useSaveGitHubToken, useSettings } from '../api'
 import { Shell } from '../components/Shell'
 import { Button, Card, cn, Empty, ErrorBox, Spinner } from '../components/ui'
-import { timeAgo } from '../lib/format'
+import type { SettingsResponse, TokenHealth } from '../../../shared/types'
+import { formatDateTime, formatNumber, plural, timeAgo } from '../lib/format'
 
 const inputClass =
   'h-10 w-full rounded-lg border border-line bg-surface-2/50 px-3 text-sm placeholder:text-fg-3 focus:border-accent focus:outline-none'
@@ -15,6 +16,81 @@ const SOURCE_NOTE = {
   none: 'Not connected yet.',
 } as const
 
+/** One line of the health readout: a label, a value, and an optional tone. */
+function Fact({ label, value, tone }: { label: string; value: ReactNode; tone?: 'warn' | 'bad' }) {
+  return (
+    <div className="flex items-baseline justify-between gap-4 border-b border-line/60 py-1.5 last:border-0">
+      <span className="text-[13px] text-fg-3">{label}</span>
+      <span
+        className={cn(
+          'text-right text-[13px] font-medium',
+          tone === 'bad' ? 'text-del' : tone === 'warn' ? 'text-warn' : '',
+        )}
+      >
+        {value}
+      </span>
+    </div>
+  )
+}
+
+function Health({ health, git }: { health: TokenHealth; git: SettingsResponse['git'] }) {
+  const expiry =
+    health.expiresAt === null
+      ? 'Never'
+      : `${formatDateTime(health.expiresAt)} · ${
+          health.expiresInDays !== null && health.expiresInDays < 0
+            ? 'expired'
+            : `in ${plural(health.expiresInDays ?? 0, 'day')}`
+        }`
+
+  const expiryTone =
+    health.expiresInDays === null ? undefined : health.expiresInDays < 0 ? 'bad' : health.expiresInDays <= 14 ? 'warn' : undefined
+
+  return (
+    <div className="mt-4">
+      {(health.problem ?? health.warning) && (
+        <div
+          role="alert"
+          className={cn(
+            'mb-3 flex items-start gap-2.5 rounded-xl border px-4 py-3 text-sm',
+            health.problem ? 'border-del/35 bg-del-soft' : 'border-warn/40 bg-warn-soft/40',
+          )}
+        >
+          <AlertTriangle
+            className={cn('mt-0.5 size-4 shrink-0', health.problem ? 'text-del' : 'text-warn')}
+            aria-hidden
+          />
+          <span>{health.problem ?? health.warning}</span>
+        </div>
+      )}
+
+      <Fact label="Account" value={health.login ?? 'Unknown'} />
+      <Fact
+        label="Permissions"
+        value={health.scopes === null ? 'Fine-grained token' : health.scopes.join(', ') || 'None'}
+      />
+      <Fact label="Expires" value={expiry} tone={expiryTone} />
+      <Fact
+        label="API calls left this hour"
+        value={
+          health.rateRemaining === null
+            ? 'Unknown'
+            : `${formatNumber(health.rateRemaining)} of ${formatNumber(health.rateLimit ?? 0)}${
+                health.rateResetAt ? ` · resets ${timeAgo(health.rateResetAt)}` : ''
+              }`
+        }
+      />
+      <Fact
+        label="Last clean fetch of every repository"
+        value={git.lastCleanFetchAt ? timeAgo(git.lastCleanFetchAt) : 'Not yet'}
+        tone={git.failing.length > 0 ? 'warn' : undefined}
+      />
+      {git.failing.length > 0 && <Fact label="Failing to fetch" value={git.failing.join(', ')} tone="warn" />}
+      <p className="mt-3 text-xs text-fg-3">Checked {timeAgo(health.checkedAt)}.</p>
+    </div>
+  )
+}
+
 function Connection() {
   const settings = useSettings()
   const save = useSaveGitHubToken()
@@ -22,6 +98,8 @@ function Connection() {
 
   const source = settings.data?.github.source ?? 'none'
   const fromEnvironment = source === 'environment'
+  const health = settings.data?.github.health ?? null
+  const broken = health !== null && !health.ok
 
   const submit = (event: FormEvent) => {
     event.preventDefault()
@@ -30,23 +108,41 @@ function Connection() {
 
   return (
     <Card
-      title={
-"GitHub"
-      }
+      title="GitHub"
       subtitle="Needed to clone private repositories and to read them without a rate limit"
     >
       <div className="flex flex-wrap items-center gap-3 text-sm">
         <span
           className={cn(
             'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium',
-            source === 'none' ? 'border-warn/40 text-warn' : 'border-add/40 text-add',
+            source === 'none' ? 'border-warn/40 text-warn' : broken ? 'border-del/40 text-del' : 'border-add/40 text-add',
           )}
         >
-          {source === 'none' ? <Lock className="size-3.5" /> : <Check className="size-3.5" />}
-          {source === 'none' ? 'Not connected' : `Connected ${settings.data?.github.hint ?? ''}`}
+          {source === 'none' ? (
+            <Lock className="size-3.5" />
+          ) : broken ? (
+            <AlertTriangle className="size-3.5" />
+          ) : (
+            <Check className="size-3.5" />
+          )}
+          {source === 'none'
+            ? 'Not connected'
+            : `${broken ? 'Not working' : 'Working'} ${settings.data?.github.hint ?? ''}`}
         </span>
         <span className="text-[13px] text-fg-3">{SOURCE_NOTE[source]}</span>
+        {source !== 'none' && (
+          <Button
+            onClick={() => settings.refetch()}
+            disabled={settings.isFetching}
+            className="ml-auto"
+          >
+            <RefreshCw className={cn('size-4', settings.isFetching && 'animate-spin')} aria-hidden />
+            Re-check
+          </Button>
+        )}
       </div>
+
+      {health && settings.data && <Health health={health} git={settings.data.git} />}
 
       {!fromEnvironment && (
         <form onSubmit={submit} className="mt-4 flex flex-wrap gap-2">
