@@ -71,6 +71,11 @@ export interface ClientConfig {
   thresholds?: Partial<Thresholds>
   /** Pinned clients are shown first, in their own section. */
   pinned?: boolean
+  /**
+   * A platform service rather than a client, like the payments gateway. Shown in its own
+   * section above the clients, because nobody owns it and it serves all of them.
+   */
+  shared?: boolean
   environments: EnvironmentConfig[]
 }
 

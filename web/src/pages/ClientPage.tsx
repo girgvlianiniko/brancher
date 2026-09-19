@@ -156,7 +156,7 @@ export function ClientPage() {
       }
       subtitle={row.region}
       actions={
-        row.kind === 'client' && (
+        row.id !== 'development' && (
           <Link to={`/c/${row.id}/setup`}>
             <Button>
               <Settings2 className="size-4" aria-hidden /> Edit

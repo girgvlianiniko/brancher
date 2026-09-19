@@ -1,26 +1,66 @@
 {
-  "thresholds": { "commits": 10, "days": 7 },
-  "probe": { "intervalSec": 30, "timeoutMs": 5000, "failuresToRed": 2 },
+  "thresholds": {
+    "commits": 10,
+    "days": 7
+  },
+  "probe": {
+    "intervalSec": 30,
+    "timeoutMs": 5000,
+    "failuresToRed": 2
+  },
   "fetchIntervalSec": 60,
-
   "development": {
     "kind": "development",
     "label": "Development",
     "feedsFrom": null,
     "services": [
-      { "kind": "front", "url": "https://oribet.space/", "enabled": true },
-      { "kind": "admin", "url": "https://admin.oribet.space/", "enabled": true },
-      { "kind": "api", "url": "https://api.oribet.space/health-check", "enabled": true },
-      { "kind": "ws", "url": "https://ws.oribet.space/", "enabled": false },
-      { "kind": "chat", "url": "https://chat.oribet.space/", "enabled": false }
+      {
+        "kind": "front",
+        "url": "https://oribet.space/",
+        "enabled": true
+      },
+      {
+        "kind": "admin",
+        "url": "https://admin.oribet.space/",
+        "enabled": true
+      },
+      {
+        "kind": "api",
+        "url": "https://api.oribet.space/health-check",
+        "enabled": true
+      },
+      {
+        "kind": "ws",
+        "url": "https://ws.oribet.space/",
+        "enabled": false
+      },
+      {
+        "kind": "chat",
+        "url": "https://chat.oribet.space/",
+        "enabled": false
+      }
     ],
     "repos": [
-      { "repoId": "oribet-monorepo", "branches": ["develop"] },
-      { "repoId": "oribet-admin", "branches": ["develop"] },
-      { "repoId": "api-laravel", "branches": ["develop"] }
+      {
+        "repoId": "oribet-monorepo",
+        "branches": [
+          "develop"
+        ]
+      },
+      {
+        "repoId": "oribet-admin",
+        "branches": [
+          "develop"
+        ]
+      },
+      {
+        "repoId": "api-laravel",
+        "branches": [
+          "develop"
+        ]
+      }
     ]
   },
-
   "clients": [
     {
       "id": "asdfbet",
@@ -32,17 +72,59 @@
           "label": "Staging",
           "feedsFrom": "development",
           "services": [
-            { "kind": "front", "url": "https://asdfbet-staging.com/", "enabled": true },
-            { "kind": "admin", "url": "https://admin.asdfbet-staging.com/", "enabled": true },
-            { "kind": "api", "url": "https://api.asdfbet-staging.com/health-check", "enabled": true },
-            { "kind": "ws", "url": "https://ws.asdfbet-staging.com/", "enabled": false },
-            { "kind": "chat", "url": "https://chat.asdfbet-staging.com/", "enabled": false },
-            { "kind": "pay", "url": "https://pay.asdfbet-staging.com/", "enabled": false }
+            {
+              "kind": "front",
+              "url": "https://asdfbet-staging.com/",
+              "enabled": true
+            },
+            {
+              "kind": "admin",
+              "url": "https://admin.asdfbet-staging.com/",
+              "enabled": true
+            },
+            {
+              "kind": "api",
+              "url": "https://api.asdfbet-staging.com/health-check",
+              "enabled": true
+            },
+            {
+              "kind": "ws",
+              "url": "https://ws.asdfbet-staging.com/",
+              "enabled": false
+            },
+            {
+              "kind": "chat",
+              "url": "https://chat.asdfbet-staging.com/",
+              "enabled": false
+            },
+            {
+              "kind": "pay",
+              "url": "https://pay.asdfbet-staging.com/",
+              "enabled": false
+            }
           ],
           "repos": [
-            { "repoId": "oribet-monorepo", "branches": ["global_develop", "dev_korean"] },
-            { "repoId": "oribet-admin", "branches": ["global_develop", "dev_korean"] },
-            { "repoId": "api-laravel", "branches": ["global_staging", "dev_korean"] }
+            {
+              "repoId": "oribet-monorepo",
+              "branches": [
+                "global_develop",
+                "dev_korean"
+              ]
+            },
+            {
+              "repoId": "oribet-admin",
+              "branches": [
+                "global_develop",
+                "dev_korean"
+              ]
+            },
+            {
+              "repoId": "api-laravel",
+              "branches": [
+                "global_staging",
+                "dev_korean"
+              ]
+            }
           ]
         },
         {
@@ -50,22 +132,62 @@
           "label": "Production",
           "feedsFrom": "staging",
           "services": [
-            { "kind": "front", "url": "https://asdfbet.com/", "enabled": true },
-            { "kind": "admin", "url": "https://admin.asdfbet.com/", "enabled": true },
-            { "kind": "api", "url": "https://api.asdfbet.com/health-check", "enabled": true }
+            {
+              "kind": "front",
+              "url": "https://asdfbet.com/",
+              "enabled": true
+            },
+            {
+              "kind": "admin",
+              "url": "https://admin.asdfbet.com/",
+              "enabled": true
+            },
+            {
+              "kind": "api",
+              "url": "https://api.asdfbet.com/health-check",
+              "enabled": true
+            }
           ],
           "repos": [
-            { "repoId": "oribet-monorepo", "branches": ["prod_korean"] },
-            { "repoId": "oribet-admin", "branches": ["prod_korean"] },
-            { "repoId": "api-laravel", "branches": ["prod_korean"] }
+            {
+              "repoId": "oribet-monorepo",
+              "branches": [
+                "prod_korean"
+              ]
+            },
+            {
+              "repoId": "oribet-admin",
+              "branches": [
+                "prod_korean"
+              ]
+            },
+            {
+              "repoId": "api-laravel",
+              "branches": [
+                "prod_korean"
+              ]
+            }
           ]
         },
         {
           "kind": "mirror",
           "label": "Mirror",
           "feedsFrom": "production",
-          "services": [{ "kind": "front", "url": "https://atmbet.casino/", "enabled": true }],
-          "repos": [{ "repoId": "oribet-monorepo", "branches": ["mirror_atmbet"] }]
+          "services": [
+            {
+              "kind": "front",
+              "url": "https://atmbet.casino/",
+              "enabled": true
+            }
+          ],
+          "repos": [
+            {
+              "repoId": "oribet-monorepo",
+              "branches": [
+                "mirror_atmbet"
+              ]
+            }
+          ]
         }
       ]
     },
@@ -79,14 +201,43 @@
           "label": "Staging",
           "feedsFrom": "development",
           "services": [
-            { "kind": "front", "url": "https://efsobet-staging.com/", "enabled": true },
-            { "kind": "admin", "url": "https://admin.efsobet-staging.com/", "enabled": true },
-            { "kind": "api", "url": "https://api.efsobet-staging.com/health-check", "enabled": true }
+            {
+              "kind": "front",
+              "url": "https://efsobet-staging.com/",
+              "enabled": true
+            },
+            {
+              "kind": "admin",
+              "url": "https://admin.efsobet-staging.com/",
+              "enabled": true
+            },
+            {
+              "kind": "api",
+              "url": "https://api.efsobet-staging.com/health-check",
+              "enabled": true
+            }
           ],
           "repos": [
-            { "repoId": "oribet-monorepo", "branches": ["global_develop", "dev_turkey"] },
-            { "repoId": "oribet-admin", "branches": ["dev_turkey"] },
-            { "repoId": "api-laravel", "branches": ["global_staging", "dev_turkey"] }
+            {
+              "repoId": "oribet-monorepo",
+              "branches": [
+                "global_develop",
+                "dev_turkey"
+              ]
+            },
+            {
+              "repoId": "oribet-admin",
+              "branches": [
+                "dev_turkey"
+              ]
+            },
+            {
+              "repoId": "api-laravel",
+              "branches": [
+                "global_staging",
+                "dev_turkey"
+              ]
+            }
           ]
         },
         {
@@ -94,14 +245,41 @@
           "label": "Production",
           "feedsFrom": "staging",
           "services": [
-            { "kind": "front", "url": "https://efsobet.com/", "enabled": true },
-            { "kind": "admin", "url": "https://admin.efsobet.com/", "enabled": true },
-            { "kind": "api", "url": "https://api.efsobet.com/health-check", "enabled": true }
+            {
+              "kind": "front",
+              "url": "https://efsobet.com/",
+              "enabled": true
+            },
+            {
+              "kind": "admin",
+              "url": "https://admin.efsobet.com/",
+              "enabled": true
+            },
+            {
+              "kind": "api",
+              "url": "https://api.efsobet.com/health-check",
+              "enabled": true
+            }
           ],
           "repos": [
-            { "repoId": "oribet-monorepo", "branches": ["efsobet_prod"] },
-            { "repoId": "oribet-admin", "branches": ["efsobet_prod"] },
-            { "repoId": "api-laravel", "branches": ["efsobet-prod"] }
+            {
+              "repoId": "oribet-monorepo",
+              "branches": [
+                "efsobet_prod"
+              ]
+            },
+            {
+              "repoId": "oribet-admin",
+              "branches": [
+                "efsobet_prod"
+              ]
+            },
+            {
+              "repoId": "api-laravel",
+              "branches": [
+                "efsobet-prod"
+              ]
+            }
           ]
         }
       ]
@@ -116,14 +294,41 @@
           "label": "Production",
           "feedsFrom": "development",
           "services": [
-            { "kind": "front", "url": "https://mycryptobet.com/", "enabled": true },
-            { "kind": "admin", "url": "https://admin.mycryptobet.com/", "enabled": true },
-            { "kind": "api", "url": "https://api.mycryptobet.com/health-check", "enabled": true }
+            {
+              "kind": "front",
+              "url": "https://mycryptobet.com/",
+              "enabled": true
+            },
+            {
+              "kind": "admin",
+              "url": "https://admin.mycryptobet.com/",
+              "enabled": true
+            },
+            {
+              "kind": "api",
+              "url": "https://api.mycryptobet.com/health-check",
+              "enabled": true
+            }
           ],
           "repos": [
-            { "repoId": "oribet-monorepo", "branches": ["africa_prod"] },
-            { "repoId": "oribet-admin", "branches": ["afrika_prod"] },
-            { "repoId": "api-laravel", "branches": ["afrika_prod"] }
+            {
+              "repoId": "oribet-monorepo",
+              "branches": [
+                "africa_prod"
+              ]
+            },
+            {
+              "repoId": "oribet-admin",
+              "branches": [
+                "afrika_prod"
+              ]
+            },
+            {
+              "repoId": "api-laravel",
+              "branches": [
+                "afrika_prod"
+              ]
+            }
           ]
         }
       ]
@@ -138,14 +343,41 @@
           "label": "Production",
           "feedsFrom": "development",
           "services": [
-            { "kind": "front", "url": "https://oribets.com/", "enabled": true },
-            { "kind": "admin", "url": "https://admin.oribets.com/", "enabled": true },
-            { "kind": "api", "url": "https://api.oribets.com/health-check", "enabled": true }
+            {
+              "kind": "front",
+              "url": "https://oribets.com/",
+              "enabled": true
+            },
+            {
+              "kind": "admin",
+              "url": "https://admin.oribets.com/",
+              "enabled": true
+            },
+            {
+              "kind": "api",
+              "url": "https://api.oribets.com/health-check",
+              "enabled": true
+            }
           ],
           "repos": [
-            { "repoId": "oribet-monorepo", "branches": ["main"] },
-            { "repoId": "oribet-admin", "branches": ["main"] },
-            { "repoId": "api-laravel", "branches": ["main"] }
+            {
+              "repoId": "oribet-monorepo",
+              "branches": [
+                "main"
+              ]
+            },
+            {
+              "repoId": "oribet-admin",
+              "branches": [
+                "main"
+              ]
+            },
+            {
+              "repoId": "api-laravel",
+              "branches": [
+                "main"
+              ]
+            }
           ]
         }
       ]
@@ -159,17 +391,44 @@
           "kind": "staging",
           "label": "Staging",
           "feedsFrom": "development",
-          "services": [{ "kind": "pay", "url": "https://pay.asdfbet-staging.com/", "enabled": true }],
-          "repos": [{ "repoId": "agentpay", "branches": ["develop"] }]
+          "services": [
+            {
+              "kind": "pay",
+              "url": "https://pay.asdfbet-staging.com/",
+              "enabled": true
+            }
+          ],
+          "repos": [
+            {
+              "repoId": "agentpay",
+              "branches": [
+                "develop"
+              ]
+            }
+          ]
         },
         {
           "kind": "production",
           "label": "Production",
           "feedsFrom": "staging",
-          "services": [{ "kind": "pay", "url": "https://pay.asdfbet.com/", "enabled": false }],
-          "repos": [{ "repoId": "agentpay", "branches": ["main"] }]
+          "services": [
+            {
+              "kind": "pay",
+              "url": "https://pay.asdfbet.com/",
+              "enabled": false
+            }
+          ],
+          "repos": [
+            {
+              "repoId": "agentpay",
+              "branches": [
+                "main"
+              ]
+            }
+          ]
         }
-      ]
+      ],
+      "shared": true
     }
   ]
 }

@@ -37,6 +37,7 @@ interface Draft {
   id: string
   name: string
   region: string
+  shared: boolean
   repoIds: string[]
   envs: Record<string, EnvDraft>
 }
@@ -47,6 +48,7 @@ const blankDraft = (): Draft => ({
   id: '',
   name: '',
   region: '',
+  shared: false,
   repoIds: [],
   envs: Object.fromEntries(SETUP_KINDS.map((kind) => [kind, emptyEnv()])),
 })
@@ -72,6 +74,7 @@ function toClient(draft: Draft): ClientConfig {
     id: draft.id,
     name: draft.name,
     region: draft.region,
+    ...(draft.shared ? { shared: true } : {}),
     environments: enabled.map<EnvironmentConfig>((kind) => ({
       kind,
       label: LABEL[kind],
@@ -100,7 +103,14 @@ function fromClient(client: ClientConfig): Draft {
       branches: Object.fromEntries(env.repos.map((r) => [r.repoId, r.branches])),
     }
   }
-  return { id: client.id, name: client.name, region: client.region, repoIds, envs }
+  return {
+    id: client.id,
+    name: client.name,
+    region: client.region,
+    shared: client.shared === true,
+    repoIds,
+    envs,
+  }
 }
 
 // ---------------------------------------------------------------- steps
@@ -275,6 +285,21 @@ export function WizardPage() {
               />
             </Field>
           </div>
+          <label className="mt-4 flex items-start gap-2.5 text-sm">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={current.shared}
+              onChange={(e) => update({ shared: e.target.checked })}
+            />
+            <span>
+              This is a shared service, not a client
+              <span className="mt-0.5 block text-xs text-fg-3">
+                Payments, chat and anything else every client uses. Shown in its own section above the
+                clients, and never pinned.
+              </span>
+            </span>
+          </label>
         </Card>
       )}
 

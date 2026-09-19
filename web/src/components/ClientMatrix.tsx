@@ -6,7 +6,7 @@ import { formatNumber, percent, shortAge } from '../lib/format'
 import { Monogram, StatusDot, TEXT } from './StatusBits'
 import { cn } from './ui'
 
-export const SLOTS: EnvKind[] = ['staging', 'production', 'mirror']
+export const ALL_SLOTS: EnvKind[] = ['development', 'staging', 'production', 'mirror']
 export const SLOT_LABEL: Record<EnvKind, string> = {
   development: 'Development',
   staging: 'Staging',
@@ -140,13 +140,13 @@ export function ClientMatrixCard({
   dragging: boolean
 }) {
   const roles = rolesOf(row)
-  const present = SLOTS.filter((kind) => row.cells[columns.indexOf(kind)])
+  const present = ALL_SLOTS.filter((kind) => row.cells[columns.indexOf(kind)])
   const overall = worstOf(row.cells)
   const worstCell = row.cells.find((cell) => cell?.colour === overall) ?? null
 
   return (
     <article
-      draggable
+      draggable={row.kind === 'client'}
       onDragStart={(event) => {
         event.dataTransfer.effectAllowed = 'move'
         onDragStart(row.id)
@@ -161,18 +161,22 @@ export function ClientMatrixCard({
       }}
       onDragEnd={onDrop}
       className={cn(
-        'glass group rounded-lg border bg-card transition-[border-color,opacity]',
+        'glass group flex h-full flex-col rounded-lg border bg-card transition-[border-color,opacity]',
         dragging ? 'border-accent opacity-40' : 'border-line hover:border-line-strong',
       )}
     >
       <header className="flex items-center gap-2.5 px-4 py-3.5">
-        <span
-          className="-ml-1 cursor-grab text-fg-3/40 opacity-0 transition group-hover:opacity-100 active:cursor-grabbing"
-          title="Drag to reorder"
-          aria-hidden
-        >
-          <GripVertical className="size-4" />
-        </span>
+        {row.kind === 'client' ? (
+          <span
+            className="-ml-1 cursor-grab text-fg-3/40 opacity-0 transition group-hover:opacity-100 active:cursor-grabbing"
+            title="Drag to reorder"
+            aria-hidden
+          >
+            <GripVertical className="size-4" />
+          </span>
+        ) : (
+          <span className="-ml-1 w-4 shrink-0" aria-hidden />
+        )}
         <Monogram name={row.name} id={row.id} />
         <div className="min-w-0 flex-1">
           <Link draggable={false} to={`/c/${row.id}`} className="block truncate text-[15px] font-bold hover:text-accent">
@@ -184,30 +188,34 @@ export function ClientMatrixCard({
           <StatusDot colour={overall} />
           <span className={cn('text-[13px] font-semibold', TEXT[overall])}>{worstCell?.word ?? '—'}</span>
         </span>
-        <button
-          onClick={() => onTogglePin(row.id)}
-          title={row.pinned ? 'Unpin' : 'Pin to the top'}
-          aria-label={row.pinned ? `Unpin ${row.name}` : `Pin ${row.name}`}
-          aria-pressed={row.pinned}
-          className={cn(
-            'grid size-8 shrink-0 place-items-center rounded-lg transition-colors hover:bg-surface-2',
-            row.pinned ? 'text-warn' : 'text-fg-3/40 opacity-0 group-hover:opacity-100 focus-visible:opacity-100',
-          )}
-        >
-          <Star className={cn('size-4', row.pinned && 'fill-current')} />
-        </button>
-        <Link
-          draggable={false}
-          to={`/c/${row.id}/setup`}
-          aria-label={`Edit ${row.name}`}
-          className="grid size-8 shrink-0 place-items-center rounded-lg text-fg-3/40 opacity-0 transition hover:bg-surface-2 hover:text-fg group-hover:opacity-100 focus-visible:opacity-100"
-        >
-          <Settings2 className="size-4" />
-        </Link>
+        {row.kind === 'client' && (
+          <button
+            onClick={() => onTogglePin(row.id)}
+            title={row.pinned ? 'Unpin' : 'Pin to the top'}
+            aria-label={row.pinned ? `Unpin ${row.name}` : `Pin ${row.name}`}
+            aria-pressed={row.pinned}
+            className={cn(
+              'grid size-8 shrink-0 place-items-center rounded-lg transition-colors hover:bg-surface-2',
+              row.pinned ? 'text-warn' : 'text-fg-3/40 opacity-0 group-hover:opacity-100 focus-visible:opacity-100',
+            )}
+          >
+            <Star className={cn('size-4', row.pinned && 'fill-current')} />
+          </button>
+        )}
+        {row.id !== 'development' && (
+          <Link
+            draggable={false}
+            to={`/c/${row.id}/setup`}
+            aria-label={`Edit ${row.name}`}
+            className="grid size-8 shrink-0 place-items-center rounded-lg text-fg-3/40 opacity-0 transition hover:bg-surface-2 hover:text-fg group-hover:opacity-100 focus-visible:opacity-100"
+          >
+            <Settings2 className="size-4" />
+          </Link>
+        )}
       </header>
 
       <div
-        className="grid gap-x-2 gap-y-1.5 border-t border-line px-4 py-3"
+        className="grid flex-1 content-start gap-x-2 gap-y-1.5 border-t border-line px-4 py-3"
         style={{ gridTemplateColumns: COLUMNS(present.length) }}
       >
         <span />

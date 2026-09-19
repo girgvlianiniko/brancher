@@ -80,6 +80,8 @@ Keep it small. Names below are the ones to use in code and config.
 ```
 Client
   id, name, region, thresholds?            thresholds overrides the global defaults
+  pinned?                                  shown first, in its own section
+  shared?                                  a platform service, not a client: its own section above them
   environments: Environment[]
 
 Environment
@@ -100,7 +102,7 @@ RepoBinding
 
 Config root
   development: Environment                  the one shared row: oribet.space, develop everywhere
-  clients: Client[]                         agentpay is an ordinary client, not a special case
+  clients: Client[]                         agentpay is a client marked `shared`, not a special case
 ```
 
 Derived, never stored in config:

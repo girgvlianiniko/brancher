@@ -2,30 +2,15 @@ import { AlertTriangle, Boxes, CheckCircle2, Plus, Search, XCircle } from 'lucid
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 
-import type { BoardRow, CellStatus } from '../../../shared/status'
+import type { BoardRow } from '../../../shared/status'
 import { useBoard, useSetLayout } from '../api'
 import { ClientMatrixCard, worstOf } from '../components/ClientMatrix'
 import { Shell } from '../components/Shell'
 import { StatTile } from '../components/StatTile'
-import { StatusDot, TEXT } from '../components/StatusBits'
 import { Button, cn, ErrorBox, Spinner } from '../components/ui'
 import { percent, timeAgo } from '../lib/format'
 
 type Filter = 'all' | 'attention' | 'working' | 'down'
-
-function DevelopmentBar({ cell }: { cell: CellStatus }) {
-  return (
-    <div className="glass flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-line bg-card px-4 py-3">
-      <span className="flex items-center gap-2 text-sm font-semibold">
-        <StatusDot colour={cell.colour} />
-        Development
-      </span>
-      <span className={cn('text-[13px]', TEXT[cell.colour])}>{cell.word}</span>
-      <span className="text-[13px] text-fg-3">{cell.sentence}</span>
-      <span className="ml-auto text-xs text-fg-3">Everything below is measured against it</span>
-    </div>
-  )
-}
 
 export function BoardPage() {
   const [params] = useSearchParams()
@@ -43,6 +28,7 @@ export function BoardPage() {
   }, [kiosk])
 
   const data = board.data
+  const shared = useMemo(() => (data?.rows ?? []).filter((row) => row.kind === 'shared'), [data])
   const clients = useMemo(() => {
     const rows = (data?.rows ?? []).filter((row) => row.kind === 'client')
     if (!draft) return rows
@@ -133,8 +119,6 @@ export function BoardPage() {
       </Shell>
     )
 
-  const development = data.rows.find((row) => row.kind === 'shared')
-  const developmentCell = development?.cells[data.columns.indexOf('development')] ?? null
   const pinned = visible.filter((row) => row.pinned)
   const rest = visible.filter((row) => !row.pinned)
 
@@ -155,15 +139,22 @@ export function BoardPage() {
     </div>
   )
 
-  const heading = (label: string, count: number) => (
-    <h2 className="mb-3 flex items-center gap-2 text-[11px] font-semibold tracking-wider text-fg-3 uppercase">
+  const heading = (label: string, count: number, note?: string) => (
+    <h2 className="mb-3 flex flex-wrap items-center gap-2 text-[11px] font-semibold tracking-wider text-fg-3 uppercase">
       {label}
       <span className="rounded bg-surface-2 px-1.5 py-0.5 text-[10px] text-fg-3">{count}</span>
+      {note && <span className="font-normal tracking-normal normal-case text-fg-3/70">{note}</span>}
     </h2>
   )
 
   const body = (
     <>
+      {shared.length > 0 && (
+        <section className="mb-7">
+          {heading('Shared services', shared.length, 'Used by every client')}
+          {section(shared)}
+        </section>
+      )}
       {pinned.length > 0 && (
         <section className="mb-7">
           {heading('Pinned', pinned.length)}
@@ -172,7 +163,7 @@ export function BoardPage() {
       )}
       {rest.length > 0 && (
         <section>
-          {pinned.length > 0 && heading('Everyone else', rest.length)}
+          {heading(pinned.length > 0 ? 'Everyone else' : 'Clients', rest.length)}
           {section(rest)}
         </section>
       )}
@@ -191,11 +182,6 @@ export function BoardPage() {
           </h1>
           <p className="text-sm text-fg-3">Checked {timeAgo(data.generatedAt)}</p>
         </div>
-        {developmentCell && (
-          <div className="mb-4">
-            <DevelopmentBar cell={developmentCell} />
-          </div>
-        )}
         {body}
       </div>
     )
@@ -248,12 +234,6 @@ export function BoardPage() {
           onClick={() => setFilter(filter === 'down' ? 'all' : 'down')}
         />
       </div>
-
-      {developmentCell && (
-        <div className="mt-5">
-          <DevelopmentBar cell={developmentCell} />
-        </div>
-      )}
 
       <div className="mt-5 mb-5 flex flex-wrap items-center gap-3">
         <label className="relative min-w-56 flex-1">

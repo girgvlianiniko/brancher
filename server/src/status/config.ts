@@ -168,6 +168,7 @@ export function parseClient(raw: unknown, at: string): ClientConfig {
     name: text(value.name, `${at}.name`),
     region: typeof value.region === 'string' ? value.region.trim() : '',
     ...(flag(value.pinned, false) ? { pinned: true } : {}),
+    ...(flag(value.shared, false) ? { shared: true } : {}),
     ...(thresholds
       ? {
           thresholds: {
@@ -306,7 +307,7 @@ export function getRows(): Row[] {
     id: client.id,
     name: client.name,
     region: client.region,
-    kind: 'client',
+    kind: client.shared === true ? 'shared' : 'client',
     pinned: client.pinned === true,
     thresholds: { ...current.thresholds, ...client.thresholds },
     environments: client.environments,
