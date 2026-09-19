@@ -1,4 +1,4 @@
-import { RefreshCw, Settings2 } from 'lucide-react'
+import { Plus, RefreshCw, Settings2 } from 'lucide-react'
 import { useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router'
 
@@ -107,6 +107,11 @@ export function BoardPage() {
           <div className="flex items-center gap-2">
             <Link to="/r" className="text-xs text-accent hover:underline">
               Repo tools
+            </Link>
+            <Link to="/c/new">
+              <Button>
+                <Plus className="size-4" aria-hidden /> Add client
+              </Button>
             </Link>
             <Button onClick={() => refresh.mutate()} disabled={refresh.isPending} title="Fetch and probe now">
               <RefreshCw className={cn('size-4', refresh.isPending && 'animate-spin')} aria-hidden />

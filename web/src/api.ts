@@ -1,6 +1,12 @@
 import { keepPreviousData, QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import type { BoardResponse, ClientDetail } from '../../shared/status'
+import type {
+  BoardResponse,
+  ClientConfig,
+  ClientDetail,
+  ProbeResult,
+  ServiceConfig,
+} from '../../shared/status'
 import type {
   AddRepoInput,
   BranchesResponse,
@@ -126,3 +132,69 @@ export const useClientDetail = (id: string, hours = 24) =>
     queryFn: () => request<ClientDetail>(`/clients/${id}?hours=${hours}`),
     refetchInterval: 30_000,
   })
+
+// ---------------------------------------------------------------- wizard
+
+export interface DiscoveredBranch {
+  name: string
+  sha: string
+  subject: string
+  author: string
+  date: string
+  trigger: 'push' | 'manual' | 'none'
+  workflowFile: string
+}
+
+/** Branches for several repos at once, so the wizard's branch step loads in one go. */
+export const useDiscoveredBranches = (repoIds: string[]) =>
+  useQuery({
+    queryKey: ['discover', 'branches', [...repoIds].sort()],
+    enabled: repoIds.length > 0,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const lists = await Promise.all(
+        repoIds.map((repoId) =>
+          request<DiscoveredBranch[]>(`/discover/branches?repoId=${encodeURIComponent(repoId)}`),
+        ),
+      )
+      return Object.fromEntries(repoIds.map((repoId, i) => [repoId, lists[i]]))
+    },
+  })
+
+export const useSuggestedServices = (domain: string) =>
+  useQuery({
+    queryKey: ['discover', 'services', domain],
+    enabled: domain.trim().length > 0,
+    staleTime: Infinity,
+    queryFn: () => request<ServiceConfig[]>(`/discover/services?domain=${encodeURIComponent(domain.trim())}`),
+  })
+
+export function useProbeUrl() {
+  return useMutation({
+    mutationFn: (url: string) =>
+      request<ProbeResult>('/discover/probe', { method: 'POST', body: JSON.stringify({ url }) }),
+  })
+}
+
+export function useSaveClient() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (client: ClientConfig) =>
+      request<ClientConfig>(`/clients/${client.id}`, { method: 'PUT', body: JSON.stringify(client) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['board'] })
+      return queryClient.invalidateQueries({ queryKey: ['client'] })
+    },
+  })
+}
+
+export function useDeleteClient() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => request<void>(`/clients/${id}`, { method: 'DELETE' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['board'] }),
+  })
+}
+
+export const useClients = () =>
+  useQuery({ queryKey: ['clients'], queryFn: () => request<ClientConfig[]>('/clients') })

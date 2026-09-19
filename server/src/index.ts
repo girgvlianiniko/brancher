@@ -11,6 +11,8 @@ import { GitCommandError } from './git/exec'
 import { addRepo, getRepo, listRepos, removeRepo } from './repos'
 import { sourceFor } from './sources'
 import { getBoard, getClientDetail, getRecentChanges, refreshNow, startEngine } from './status/engine'
+import { getConfig, parseClient, removeClient, upsertClient } from './status/config'
+import { discoverBranches, discoverTriggers, probeUrl, suggestServices } from './status/discover'
 
 const app = new Hono().basePath('/api')
 
@@ -26,6 +28,32 @@ app.post('/board/refresh', async (c) => {
 })
 
 app.get('/board/changes', (c) => c.json(getRecentChanges(Number(c.req.query('limit')) || 50)))
+
+app.get('/clients', (c) => c.json(getConfig()?.clients ?? []))
+
+app.put('/clients/:id', async (c) => {
+  const body = (await c.req.json().catch(() => null)) as unknown
+  const client = parseClient({ ...(body as object), id: c.req.param('id') }, 'client')
+  const config = upsertClient(client)
+  void refreshNow()
+  return c.json(config.clients.find((candidate) => candidate.id === client.id))
+})
+
+app.delete('/clients/:id', (c) => {
+  removeClient(c.req.param('id'))
+  return c.body(null, 204)
+})
+
+app.get('/discover/branches', async (c) => c.json(await discoverBranches(c.req.query('repoId') ?? '')))
+
+app.get('/discover/triggers', async (c) => c.json(await discoverTriggers(c.req.query('repoId') ?? '')))
+
+app.get('/discover/services', (c) => c.json(suggestServices(c.req.query('domain') ?? '')))
+
+app.post('/discover/probe', async (c) => {
+  const body = (await c.req.json().catch(() => null)) as { url?: string } | null
+  return c.json(await probeUrl(body?.url ?? ''))
+})
 
 app.get('/clients/:id', (c) => {
   const hours = Number(c.req.query('hours'))

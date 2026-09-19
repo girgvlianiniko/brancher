@@ -2,9 +2,9 @@
 
 A shareholder-facing status layer on top of Brancher. One page answers "is every client up, and is anything waiting to ship". Clicking a client opens a client-scoped page. One more click lands on Brancher's existing per-repo tabs, unchanged.
 
-This document is the spec for whoever implements it. It records the decisions taken in the grilling session on 19 Sep 2026 and the facts read from the `core-platform-handover` GitHub org the same day. Where something is still unknown it says so.
+**Status: all three phases are built and running.** This document records the decisions taken in the grilling session on 19 Sep 2026, the facts read from the `core-platform-handover` GitHub org the same day, and what the implementation actually does. Where the build corrected a planning assumption, the correction is marked.
 
-Companion file: `clients.example.json`, the starter config with the real client map.
+Companion file: `clients.example.json`, the starter config with the real client map. Copy it to `server/data/clients.json`.
 
 ## 1. Decisions already made
 
@@ -51,21 +51,21 @@ api-laravel health endpoint: `GET /health-check`. Use it as the api probe path. 
 
 In the monorepo a push to `global_develop` runs an affected-apps job that calls the same staging deploy workflows `dev_korean` and `dev_turkey` trigger directly. Nothing writes back to those branches. So an environment maps to a **set** of branches. The one with the most recent commit is the **primary** and lag is computed from it. The card names the primary. The drill-down shows all of them.
 
-### Disabled deploy triggers
+### Branches that do not auto-deploy
 
-These workflows listen on branches that do not exist, so their environments deploy only by manual dispatch:
+**Corrected during the build.** Several workflows do watch branches that do not exist, but in most cases a second workflow covers the same branch, so the environment still deploys on push. A live trigger beats a phantom, and the parser implements that precedence.
 
-| Repo | Workflow | Listens on | Real branch |
-|---|---|---|---|
-| oribet-monorepo | deploy_korean_prod.yml | none (dispatch only) | `prod_korean` (a second workflow, asdfbet-com-prod-front.yaml, does listen on it) |
-| oribet-admin | dev_afrika.yaml | `afrika_prodfdasfas` | `afrika_prod` |
-| api-laravel | develop_asdfbet-staging.yaml | `develop_korean` | `dev_korean` |
-| api-laravel | develop_efsobet-staging.yaml | `develop_turkey` | `dev_turkey` |
-| api-laravel | production_efsobet.yaml | `efsobetprod` | `efsobet-prod` |
-| api-laravel | asdgbet-scale.yaml | `prod_koreanfdsafsa` | `prod_korean` |
-| api-laravel | production_oribets-com.yaml | `production` | `main` |
+Parsing every workflow with a real YAML parser gives the accurate list. These five environment branches have no push trigger at all:
 
-This is why the board must show "auto-deploy off" rather than assume pushed equals deployed.
+| Repo | Branch | What it means |
+|---|---|---|
+| oribet-monorepo | `mirror_atmbet` | The Korea mirror never deploys on push |
+| api-laravel | `dev_korean` | Korea staging API; the workflow watches `develop_korean` |
+| api-laravel | `dev_turkey` | Turkey staging API; the workflow watches `develop_turkey` |
+| api-laravel | `main` | The oribets.com API; the workflow watches `production` |
+| agentpay | `develop` | Only `main` deploys |
+
+The board shows these as "Deploys by hand only" on the cell, so a branch that is up to date cannot be mistaken for a site that is up to date.
 
 ### Unknowns to resolve during setup, not before
 
@@ -98,9 +98,9 @@ RepoBinding
   repoId                                    Brancher's existing RepoConfig.id
   branches: string[]                        feeder set; primary = most recent commit
 
-Shared
-  development: Environment                  oribet.space, develop everywhere; every client's staging feeds from it
-  agentpay: Environment                     one production, one staging, own repo
+Config root
+  development: Environment                  the one shared row: oribet.space, develop everywhere
+  clients: Client[]                         agentpay is an ordinary client, not a special case
 ```
 
 Derived, never stored in config:
@@ -119,10 +119,14 @@ StatusChange  cellRef, from, to, at                     the hook alerts will con
 
 Evaluate per cell (client × environment), in this order. First match wins the colour.
 
-1. Any enabled service `down` → **red**. Word: "Down". Sentence: "<service> not answering since <time>".
-2. Any enabled service `unknown` and none down → **grey**. Word: "Checking".
-3. Any lag edge into this environment over threshold → **yellow**. Word: "Behind". Sentence: "<n> changes waiting from <fromEnv>" or "oldest change waiting <d> days".
-4. Otherwise → **green**. Word: "Working". Sentence: "Deployed <ago>" using the primary branch's last commit date.
+1. Website, admin panel or API `down` → **red**. Word: "Down". The sentence names which one and since when.
+2. Every enabled service still `unknown` → **grey**. Word: "Checking".
+3. Live updates, chat or payments `down` → **yellow**. Word: "Degraded". Losing these hurts without taking the site down.
+4. Any lag edge into this environment over threshold → **yellow**. Word: "Behind". Sentence: "<n> changes waiting from <fromEnv>", plus the age when that is what tripped it.
+5. No enabled services at all → **grey**. Word: "No checks". Nothing is probed here, so "working" would be a claim the board cannot make.
+6. Otherwise → **green**. Word: "Working".
+
+**Resolved during the build.** The decision table said one service of several down is yellow while the rules said any service down is red. Splitting services into critical and non-critical settles it: the public site being unreachable is red, a degraded extra is yellow.
 
 Extra line on every cell, muted, when applicable: "auto-deploy off" if any bound repo's primary branch has no live push trigger.
 
@@ -240,13 +244,15 @@ Nothing existing is removed. The only behaviour change to existing code is the h
 
 ## 10. Phasing
 
-Each phase ends usable.
+All three phases are built. Each ended usable.
 
 **Phase 1, board.** Domain model, config loader, fetch and lag loops, probe loop, SQLite, status rules, `/board`, board page with kiosk mode. Config is hand-edited from `clients.example.json`. Outcome: the wall screen works.
 
 **Phase 2, drill-down.** `/clients/:id`, client page with promotion rails linking into Compare, probe history strip, status changes. Prototype the layout, adjust once.
 
 **Phase 3, wizard.** Discovery endpoints, the six steps, edit and delete. Deploy-trigger parsing and the "auto-deploy off" line on cells.
+
+Deploy-trigger parsing landed in phase 1 rather than phase 3, because the engine needed it to tell a stale branch from a stale site.
 
 **Later, not planned here.** Alert adapter consuming StatusChange (Slack webhook already exists in CI secrets). Additional health adapters. testautomation results (Allure from GitHub Actions) as a new service kind. Running-version detection via a version endpoint or Actions run history.
 
@@ -265,3 +271,12 @@ Each phase ends usable.
 - **Broken triggers are common.** Without the "auto-deploy off" line the board would lie. Ship it in phase 3 at the latest; earlier if cheap.
 - **Probing from one office machine** measures one path to each site. A local network problem paints everything red. The header should show when the probe host itself cannot reach a known-good control URL, and hold colours instead of flipping.
 - **Node version.** `node:sqlite` needs Node 22.5 or later. The machine runs 26. Pin `engines` in package.json.
+
+
+## 13. Added during the build, beyond the plan
+
+- **`GET /board/changes`** and a "What changed" panel on the client page, reading the transitions an alert adapter will later consume.
+- **Wizard steps live in the URL** (`?step=3`), so a half-finished setup reopens where it was left.
+- **A control probe** on every pass. When this machine cannot reach the internet the whole pass is skipped and the board says the colours are held, rather than painting every client red over a local network fault.
+- **Warm-up guard.** Colour changes are only recorded once both a lag pass and a probe pass have completed, so a restart cannot emit a false "went yellow".
+- **`allowBuilds: esbuild`** in the workspace file, which removes the manual `pnpm approve-builds` step a fresh clone needed.

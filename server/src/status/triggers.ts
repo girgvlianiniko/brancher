@@ -23,7 +23,9 @@ const normalise = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, '
 function resembles(phantom: string, real: string): boolean {
   const a = normalise(phantom)
   const b = normalise(real)
-  return a !== b && (a.includes(b) || b.includes(a))
+  // A phantom is never a real branch, so an exact match after normalising means the
+  // workflow meant this branch and got the separators wrong.
+  return a.includes(b) || b.includes(a)
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>

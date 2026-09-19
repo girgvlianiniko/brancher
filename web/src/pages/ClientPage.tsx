@@ -1,10 +1,10 @@
-import { ArrowLeft, ArrowRight, GitCompareArrows } from 'lucide-react'
+import { ArrowLeft, ArrowRight, GitCompareArrows, Settings2 } from 'lucide-react'
 import { Link, useParams } from 'react-router'
 
 import type { CellStatus, DeployTrigger, LagEdge, ProbeSample, ServiceState } from '../../../shared/status'
 import { useClientDetail } from '../api'
 import { Cell, SERVICE_TAG, StatusDot } from '../components/StatusBits'
-import { Card, cn, Empty, ErrorBox, Spinner } from '../components/ui'
+import { Button, Card, cn, Empty, ErrorBox, Spinner } from '../components/ui'
 import { formatDateTime, formatNumber, plural, timeAgo } from '../lib/format'
 
 /** One box on a promotion rail: an environment, and the branch that lands there. */
@@ -180,8 +180,19 @@ export function ClientPage() {
         <Link to="/" className="inline-flex items-center gap-1 text-sm text-accent hover:underline">
           <ArrowLeft className="size-4" aria-hidden /> Back to the board
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold">{row.name}</h1>
-        {row.region && <p className="text-sm text-fg-3">{row.region}</p>}
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h1 className="text-2xl font-semibold">{row.name}</h1>
+            {row.region && <p className="text-sm text-fg-3">{row.region}</p>}
+          </div>
+          {row.kind === 'client' && (
+            <Link to={`/c/${row.id}/setup`}>
+              <Button>
+                <Settings2 className="size-4" aria-hidden /> Edit setup
+              </Button>
+            </Link>
+          )}
+        </div>
       </header>
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
