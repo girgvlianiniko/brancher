@@ -119,6 +119,9 @@ export function useRefreshBoard() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: () => request<BoardResponse>('/board/refresh', { method: 'POST' }),
+    // A poll already in flight would otherwise land after this and overwrite the answer
+    // with what the board looked like before.
+    onMutate: () => queryClient.cancelQueries({ queryKey: ['board'] }),
     onSuccess: (board) => {
       queryClient.setQueryData(['board'], board)
       return queryClient.invalidateQueries({ queryKey: ['client'] })
@@ -181,6 +184,7 @@ export function useSaveClient() {
   return useMutation({
     mutationFn: (client: ClientConfig) =>
       request<ClientConfig>(`/clients/${client.id}`, { method: 'PUT', body: JSON.stringify(client) }),
+    onMutate: () => queryClient.cancelQueries({ queryKey: ['board'] }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['board'] })
       return queryClient.invalidateQueries({ queryKey: ['client'] })
@@ -205,6 +209,9 @@ export function useSetLayout() {
   return useMutation({
     mutationFn: (layout: { order: string[]; pinned: string[] }) =>
       request<BoardResponse>('/board/layout', { method: 'PUT', body: JSON.stringify(layout) }),
+    // Without this, a poll that started before the pin was saved can resolve after it and
+    // put the old layout back on screen. The next drag would then write that back to disk.
+    onMutate: () => queryClient.cancelQueries({ queryKey: ['board'] }),
     onSuccess: (board) => queryClient.setQueryData(['board'], board),
   })
 }

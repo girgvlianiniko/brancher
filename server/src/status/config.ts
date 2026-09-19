@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
 import type {
@@ -244,18 +244,33 @@ export const getConfig = () => config
 
 export function saveConfig(next: BoardConfig): BoardConfig {
   mkdirSync(path.dirname(CONFIG_FILE), { recursive: true })
-  writeFileSync(CONFIG_FILE, JSON.stringify(next, null, 2))
+  // Write beside the real file and rename over it, so a crash part way through cannot
+  // leave the board with a half-written config and no clients at all.
+  const temporary = `${CONFIG_FILE}.tmp`
+  writeFileSync(temporary, JSON.stringify(next, null, 2))
+  renameSync(temporary, CONFIG_FILE)
   config = next
   return next
 }
 
-/** Replaces one client, or adds it when the id is new. */
+/**
+ * Replaces one client, or adds it when the id is new.
+ *
+ * Pinning is board layout, not client content, and it is changed through `setLayout`
+ * alone. Editing a client in the wizard therefore keeps whatever pin it already had,
+ * instead of silently dropping it because the form never carried the field.
+ */
 export function upsertClient(client: ClientConfig): BoardConfig {
   const current = config
   if (!current) throw badRequest('No board config yet')
-  const clients = current.clients.some((c) => c.id === client.id)
-    ? current.clients.map((c) => (c.id === client.id ? client : c))
-    : [...current.clients, client]
+  const existing = current.clients.find((c) => c.id === client.id)
+  const merged: ClientConfig = {
+    ...client,
+    ...(client.pinned === undefined && existing?.pinned ? { pinned: true } : {}),
+  }
+  const clients = existing
+    ? current.clients.map((c) => (c.id === client.id ? merged : c))
+    : [...current.clients, merged]
   return saveConfig({ ...current, clients })
 }
 
@@ -270,14 +285,18 @@ export function setLayout(order: string[], pinned: string[]): BoardConfig {
   for (const id of order) if (!known.has(id)) throw badRequest(`No client with id "${id}"`)
 
   const pinnedSet = new Set(pinned)
+  const mentioned = new Set(order)
   const ordered = [
     ...order.map((id) => known.get(id)!),
     // Anything the caller did not mention keeps its place at the end.
-    ...current.clients.filter((client) => !order.includes(client.id)),
+    ...current.clients.filter((client) => !mentioned.has(client.id)),
   ]
   return saveConfig({
     ...current,
     clients: ordered.map((client) => {
+      // Only clients the caller listed can have their pin changed. A partial or stale
+      // payload can then reorder what it knows about without unpinning the rest.
+      if (!mentioned.has(client.id)) return client
       const { pinned: _was, ...rest } = client
       return pinnedSet.has(client.id) ? { ...rest, pinned: true } : rest
     }),
