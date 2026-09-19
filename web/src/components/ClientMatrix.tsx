@@ -1,4 +1,12 @@
-import { GripVertical, Settings2, Star, TriangleAlert } from 'lucide-react'
+import {
+  CreditCard,
+  Globe,
+  GripVertical,
+  Settings2,
+  ShieldUser,
+  Star,
+  TriangleAlert,
+} from 'lucide-react'
 import { Link } from 'react-router'
 
 import type { BoardRow, CellStatus, Colour, EnvKind, ServiceKind } from '../../../shared/status'
@@ -61,6 +69,14 @@ interface RoleState {
 }
 
 const SLOW_MS = 1500
+
+/** Services that are a page somebody opens, rather than an endpoint. */
+const OPENABLE: { kind: ServiceKind; icon: typeof Globe; label: string }[] = [
+  { kind: 'front', icon: Globe, label: 'website' },
+  { kind: 'admin', icon: ShieldUser, label: 'admin panel' },
+  { kind: 'pay', icon: CreditCard, label: 'payments' },
+]
+
 
 /** Label column, a spacer, the environment columns, then a matching spacer. */
 const COLUMNS = (count: number) => `4.75rem 1fr repeat(${count}, minmax(4.5rem, 8rem)) 1fr`
@@ -310,6 +326,48 @@ export function ClientMatrixCard({
               <span className="flex h-4 items-center text-[11px] text-fg-3/70">
                 {cell.uptime !== null ? `${percent(cell.uptime)} up` : ''}
               </span>
+            </span>
+          )
+        })}
+        <span />
+      </div>
+
+      <div
+        className="grid gap-x-2 border-t border-line px-4 py-2.5"
+        style={{ gridTemplateColumns: COLUMNS(present.length) }}
+      >
+        <span className="flex items-center text-[10px] tracking-wider text-fg-3/70 uppercase">Open</span>
+        <span />
+        {present.map((kind) => {
+          const cell = row.cells[columns.indexOf(kind)]!
+          const links = OPENABLE.map((entry) => ({
+            ...entry,
+            service: cell.services.find((service) => service.kind === entry.kind),
+          })).filter((entry) => entry.service)
+          return (
+            <span key={kind} className="flex items-center justify-center gap-1">
+              {links.length === 0 ? (
+                <span className="text-[11px] text-fg-3/40">—</span>
+              ) : (
+                links.map((entry) => (
+                  <a
+                    key={entry.kind}
+                    href={entry.service!.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    draggable={false}
+                    onClick={(event) => event.stopPropagation()}
+                    title={`Open the ${cell.label.toLowerCase()} ${entry.label}`}
+                    aria-label={`Open the ${cell.label} ${entry.label}`}
+                    className={cn(
+                      'grid size-7 place-items-center rounded-md transition-colors hover:bg-surface-2',
+                      entry.service!.status === 'down' ? 'text-del' : 'text-fg-3 hover:text-fg',
+                    )}
+                  >
+                    <entry.icon className="size-3.5" aria-hidden />
+                  </a>
+                ))
+              )}
             </span>
           )
         })}

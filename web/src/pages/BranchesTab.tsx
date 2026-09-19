@@ -1,6 +1,6 @@
 import { ArrowDown, ArrowUp, GitCompareArrows, Search, Star } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 
 import type { Branch, RepoConfig } from '../../../shared/types'
 import { useBranches } from '../api'
@@ -58,7 +58,9 @@ function Upstream({ branch }: { branch: Branch }) {
 
 export function BranchesTab({ repo }: { repo: RepoConfig }) {
   const branches = useBranches(repo.id)
-  const [search, setSearch] = useState('')
+  // `?branch=` lets another page link straight to one row rather than the whole list.
+  const [params, setParams] = useSearchParams()
+  const [search, setSearch] = useState(params.get('branch') ?? '')
   const [kind, setKind] = useState<KindFilter>('all')
   const [sortBy, setSortBy] = useState<SortBy>('updated')
 
@@ -101,7 +103,10 @@ export function BranchesTab({ repo }: { repo: RepoConfig }) {
             <Search className="pointer-events-none absolute top-2 left-2 size-4 text-fg-3" aria-hidden />
             <input
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value)
+                if (params.has('branch')) setParams({}, { replace: true })
+              }}
               placeholder="Filter branches"
               aria-label="Filter branches"
               className="h-8 w-44 rounded-md border border-line bg-surface pr-2 pl-8 text-sm placeholder:text-fg-3 focus:border-accent focus:outline-none"

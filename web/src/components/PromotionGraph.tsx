@@ -249,9 +249,13 @@ export function PromotionGraph({
                 {state.word}
               </p>
               {detailed && branch ? (
-                <p className="mt-0.5 truncate font-mono text-[10px] text-fg-3/80" title={branch.branch}>
+                <Link
+                  to={`/r/${repoId}/branches?branch=${encodeURIComponent(branch.branch)}`}
+                  title={`Open ${branch.branch} in the repository tools`}
+                  className="mt-0.5 block truncate font-mono text-[10px] text-fg-3/80 underline decoration-dotted underline-offset-2 hover:text-accent"
+                >
                   {branch.branch}
-                </p>
+                </Link>
               ) : (
                 node.cell?.lastDeployedAt && (
                   <p className="mt-0.5 truncate text-[10px] text-fg-3">
