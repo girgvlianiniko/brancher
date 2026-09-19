@@ -7,6 +7,12 @@ import { useBoard } from '../api'
 import { Shell } from '../components/Shell'
 import { StatTile } from '../components/StatTile'
 import { Monogram, ServiceLine, StatusDot, StatusLine, TEXT } from '../components/StatusBits'
+import {
+  VariantBars,
+  VariantExceptions,
+  VariantGrid,
+  VariantLines,
+} from '../components/variants'
 import { Button, cn, ErrorBox, Spinner } from '../components/ui'
 import { timeAgo } from '../lib/format'
 
@@ -122,9 +128,18 @@ function DevelopmentBar({ cell, kiosk }: { cell: CellStatus; kiosk: boolean }) {
   )
 }
 
+const VARIANTS = [
+  { id: 'cards', label: 'A · Cards (current)' },
+  { id: 'lines', label: 'B · One line each' },
+  { id: 'matrix', label: 'C · Part by environment' },
+  { id: 'exceptions', label: 'D · Only what is wrong' },
+  { id: 'bars', label: 'E · Bars per part' },
+] as const
+
 export function BoardPage() {
-  const [params] = useSearchParams()
+  const [params, setParams] = useSearchParams()
   const kiosk = params.get('kiosk') === '1'
+  const variant = params.get('v') ?? 'cards'
   const board = useBoard(kiosk ? 20_000 : 30_000)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
@@ -293,8 +308,34 @@ export function BoardPage() {
         </label>
       </div>
 
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <span className="text-xs text-fg-3">Layout</span>
+        {VARIANTS.map((option) => (
+          <button
+            key={option.id}
+            onClick={() => setParams(option.id === 'cards' ? {} : { v: option.id }, { replace: true })}
+            className={cn(
+              'rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors',
+              variant === option.id
+                ? 'border-accent bg-accent-soft text-accent'
+                : 'border-line text-fg-3 hover:border-line-strong hover:text-fg',
+            )}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
       {visible.length === 0 ? (
         <p className="py-12 text-center text-sm text-fg-3">No clients match.</p>
+      ) : variant === 'lines' ? (
+        <VariantLines rows={visible} columns={data.columns} />
+      ) : variant === 'matrix' ? (
+        <VariantGrid rows={visible} columns={data.columns} />
+      ) : variant === 'exceptions' ? (
+        <VariantExceptions rows={visible} columns={data.columns} />
+      ) : variant === 'bars' ? (
+        <VariantBars rows={visible} columns={data.columns} />
       ) : (
         grid
       )}

@@ -98,13 +98,30 @@ function parseService(raw: unknown, at: string): ServiceConfig {
   }
 }
 
+/** Which part of the product a repo builds, when the config does not say. */
+export function guessRole(repoId: string): ServiceKind | null {
+  const name = repoId.toLowerCase()
+  if (name.includes('admin') || name.includes('back-office') || name.includes('backoffice')) return 'admin'
+  if (name.includes('api') || name.includes('laravel') || name.includes('backend')) return 'api'
+  if (name.includes('pay')) return 'pay'
+  if (name.includes('chat')) return 'chat'
+  if (name.includes('socket') || name.includes('ws')) return 'ws'
+  if (name.includes('front') || name.includes('web') || name.includes('monorepo')) return 'front'
+  return null
+}
+
 function parseBinding(raw: unknown, at: string): RepoBinding {
   const value = record(raw, at)
   const branches = list(value.branches, `${at}.branches`).map((branch, i) =>
     text(branch, `${at}.branches[${i}]`),
   )
   if (branches.length === 0) throw badRequest(`${at}.branches needs at least one branch`)
-  return { repoId: text(value.repoId, `${at}.repoId`), branches }
+  const repoId = text(value.repoId, `${at}.repoId`)
+  const role =
+    value.role === undefined || value.role === null
+      ? guessRole(repoId)
+      : oneOf<ServiceKind>(value.role, SERVICE_KINDS, `${at}.role`)
+  return { repoId, branches, ...(role ? { role } : {}) }
 }
 
 function parseEnvironment(raw: unknown, at: string): EnvironmentConfig {

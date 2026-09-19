@@ -267,6 +267,7 @@ async function refreshLag() {
         const base: LagEdge = {
           repoId: binding.repoId,
           repoName: repoName(binding.repoId),
+          role: binding.role ?? null,
           fromEnv: source.kind,
           toEnv: env.kind,
           fromBranch: from?.branch ?? '',

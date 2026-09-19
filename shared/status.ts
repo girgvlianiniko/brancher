@@ -44,6 +44,12 @@ export interface ServiceConfig {
 export interface RepoBinding {
   repoId: string
   branches: string[]
+  /**
+   * Which part of the product this repo builds. Lets the board say "the website is 60
+   * changes behind" instead of only "this environment is behind". Guessed from the repo
+   * name when it is not set.
+   */
+  role?: ServiceKind
 }
 
 export interface EnvironmentConfig {
@@ -94,6 +100,8 @@ export interface ServiceState {
 export interface LagEdge {
   repoId: string
   repoName: string
+  /** The part of the product this repo builds, so lag can be attributed to it. */
+  role: ServiceKind | null
   fromEnv: EnvKind
   toEnv: EnvKind
   fromBranch: string
