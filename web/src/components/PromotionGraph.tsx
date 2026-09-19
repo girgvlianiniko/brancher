@@ -1,32 +1,24 @@
 import { Link } from 'react-router'
 
-import type { CellStatus, EnvKind, LagEdge, ServiceKind } from '../../../shared/status'
+import type { CellStatus, Colour, EnvKind, ServiceKind } from '../../../shared/status'
 import { formatNumber, shortAge, timeAgo } from '../lib/format'
-import { ROLE_LABEL } from './ClientMatrix'
 import { StatusDot, TEXT } from './StatusBits'
 import { cn } from './ui'
 
-const NODE_W = 192
-const NODE_H = 92
-const COL_GAP = 120
-const ROW_GAP = 28
+const NODE_W = 168
+const NODE_H = 76
+const COL_GAP = 108
+const ROW_GAP = 22
 
-const ROLE_ORDER: ServiceKind[] = ['front', 'admin', 'api', 'pay', 'ws', 'chat']
-
-interface Hop {
-  role: ServiceKind
-  repoId: string
+interface Edge {
+  from: EnvKind
+  to: EnvKind
   count: number
   over: boolean
   oldest: string | null
   fromRef: string
   toRef: string
-}
-
-interface Edge {
-  from: EnvKind
-  to: EnvKind
-  hops: Hop[]
+  error: string | null
 }
 
 interface Node {
@@ -37,39 +29,46 @@ interface Node {
   row: number
 }
 
-function buildEdges(cells: CellStatus[]): Edge[] {
-  const byPair = new Map<string, Edge>()
+/** The health and backlog of one part of the product inside one environment. */
+function nodeState(cell: CellStatus | null, role: ServiceKind | null, incoming: Edge[]): {
+  colour: Colour
+  word: string
+} {
+  if (!cell) return { colour: 'grey', word: 'Source' }
+  const service = role ? cell.services.find((s) => s.kind === role) : undefined
+  if (service?.status === 'down') return { colour: 'red', word: 'Down' }
+  if (incoming.some((edge) => edge.over)) return { colour: 'yellow', word: 'Behind' }
+  if (service?.status === 'unknown') return { colour: 'grey', word: 'Checking' }
+  return { colour: 'green', word: 'Working' }
+}
+
+function buildEdges(cells: CellStatus[], repoId: string): Edge[] {
+  const edges: Edge[] = []
   for (const cell of cells) {
     for (const lag of cell.lag) {
-      if (!lag.role) continue
-      const key = `${lag.fromEnv}>${lag.toEnv}`
-      const edge = byPair.get(key) ?? { from: lag.fromEnv, to: lag.toEnv, hops: [] }
-      edge.hops.push({
-        role: lag.role,
-        repoId: lag.repoId,
+      if (lag.repoId !== repoId) continue
+      edges.push({
+        from: lag.fromEnv,
+        to: lag.toEnv,
         count: lag.realCommits,
         over: lag.overThreshold,
         oldest: lag.oldestWaitingAt,
         fromRef: lag.fromRef || lag.fromBranch,
         toRef: lag.toRef || lag.toBranch,
+        error: lag.error,
       })
-      byPair.set(key, edge)
     }
   }
-  for (const edge of byPair.values()) {
-    edge.hops.sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role))
-  }
-  return [...byPair.values()]
+  return edges
 }
 
-/** Columns come from how far a node sits from the start of the chain. */
+/** Columns come from how far a node sits from the start of this repo's chain. */
 function layout(edges: Edge[], cells: CellStatus[], devCell: CellStatus | null): Node[] {
   const kinds = new Set<EnvKind>()
   for (const edge of edges) {
     kinds.add(edge.from)
     kinds.add(edge.to)
   }
-  for (const cell of cells) kinds.add(cell.envKind)
 
   const depth = new Map<EnvKind, number>()
   const resolve = (kind: EnvKind, seen: Set<EnvKind>): number => {
@@ -83,11 +82,6 @@ function layout(edges: Edge[], cells: CellStatus[], devCell: CellStatus | null):
   }
   for (const kind of kinds) resolve(kind, new Set())
 
-  const cellFor = (kind: EnvKind) =>
-    kind === 'development' && !cells.some((c) => c.envKind === kind)
-      ? devCell
-      : (cells.find((c) => c.envKind === kind) ?? null)
-
   const perColumn = new Map<number, number>()
   return [...kinds]
     .sort((a, b) => (depth.get(a) ?? 0) - (depth.get(b) ?? 0))
@@ -95,7 +89,8 @@ function layout(edges: Edge[], cells: CellStatus[], devCell: CellStatus | null):
       const col = depth.get(kind) ?? 0
       const row = perColumn.get(col) ?? 0
       perColumn.set(col, row + 1)
-      const cell = cellFor(kind)
+      const own = cells.find((c) => c.envKind === kind) ?? null
+      const cell = own ?? (kind === 'development' ? devCell : null)
       return { kind, label: cell?.label ?? kind, cell, col, row }
     })
 }
@@ -103,57 +98,27 @@ function layout(edges: Edge[], cells: CellStatus[], devCell: CellStatus | null):
 const x = (col: number) => col * (NODE_W + COL_GAP)
 const y = (row: number) => row * (NODE_H + ROW_GAP)
 
-function EdgeLabel({ edge, repoId, detailed }: { edge: Edge; repoId: string | null; detailed: boolean }) {
-  const hops = repoId ? edge.hops.filter((hop) => hop.repoId === repoId) : edge.hops
-  const waiting = hops.filter((hop) => hop.count > 0)
-
-  if (waiting.length === 0) {
-    return (
-      <span className="rounded-md border border-line bg-card px-2 py-1 text-[11px] font-medium text-add">
-        in step
-      </span>
-    )
-  }
-
-  return (
-    <span className="flex flex-col items-stretch gap-0.5 rounded-md border border-line bg-card px-2 py-1.5">
-      {waiting.map((hop) => (
-        <Link
-          key={`${hop.repoId}-${hop.role}`}
-          to={`/r/${hop.repoId}/compare?base=${encodeURIComponent(hop.toRef)}&head=${encodeURIComponent(hop.fromRef)}`}
-          className="flex items-baseline justify-between gap-2.5 text-[11px] leading-tight whitespace-nowrap hover:underline"
-          title={`${hop.count} changes waiting to reach ${edge.to}`}
-        >
-          <span className="text-fg-3">{ROLE_LABEL[hop.role]}</span>
-          <span className={cn('tabular font-semibold', hop.over ? 'text-warn' : 'text-fg')}>
-            {formatNumber(hop.count)}
-          </span>
-          {detailed && hop.oldest && <span className="text-fg-3/70">{shortAge(hop.oldest)}</span>}
-        </Link>
-      ))}
-    </span>
-  )
-}
-
 /**
- * The path a change takes, drawn rather than listed. Nodes are environments, the line
- * between two of them carries what is waiting on that hop, and the shape follows the
- * real promotion links, so a mirror that branches off shows as a branch.
+ * One repository's path from development to everywhere it lands. Separate graphs per
+ * repository make the one that is falling behind obvious without reading any numbers:
+ * its line is the amber one.
  */
 export function PromotionGraph({
   cells,
   devCell,
   repoId,
+  role,
   detailed,
 }: {
   cells: CellStatus[]
   devCell: CellStatus | null
-  repoId: string | null
+  repoId: string
+  role: ServiceKind | null
   detailed: boolean
 }) {
-  const edges = buildEdges(cells)
+  const edges = buildEdges(cells, repoId)
   const nodes = layout(edges, cells, devCell)
-  if (nodes.length === 0) return null
+  if (nodes.length === 0) return <p className="text-[13px] text-fg-3">Not used by this client.</p>
 
   const at = (kind: EnvKind) => nodes.find((node) => node.kind === kind)
   const cols = Math.max(...nodes.map((n) => n.col)) + 1
@@ -174,27 +139,28 @@ export function PromotionGraph({
             const x2 = x(to.col)
             const y2 = y(to.row) + NODE_H / 2
             const mid = (x1 + x2) / 2
-            const waiting = (repoId ? edge.hops.filter((h) => h.repoId === repoId) : edge.hops).some(
-              (hop) => hop.count > 0,
-            )
             return (
               <path
                 key={`${edge.from}-${edge.to}`}
-                d={`M${x1} ${y1}C${mid} ${y1} ${mid} ${y2} ${x2 - 7} ${y2}`}
+                d={`M${x1} ${y1}C${mid} ${y1} ${mid} ${y2} ${x2 - 6} ${y2}`}
                 fill="none"
                 strokeWidth={2}
-                stroke={waiting ? 'var(--warn)' : 'var(--line-strong)'}
-                markerEnd={waiting ? 'url(#arrow-waiting)' : 'url(#arrow-clear)'}
+                stroke={edge.over ? 'var(--warn)' : edge.count > 0 ? 'var(--line-strong)' : 'var(--add)'}
+                strokeOpacity={edge.count > 0 ? 1 : 0.55}
+                markerEnd={edge.over ? 'url(#arrow-warn)' : edge.count > 0 ? 'url(#arrow-plain)' : 'url(#arrow-ok)'}
               />
             )
           })}
           <defs>
-            <marker id="arrow-clear" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="6" markerHeight="6" orient="auto">
-              <path d="M0 0 L8 4 L0 8 z" fill="var(--line-strong)" />
-            </marker>
-            <marker id="arrow-waiting" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="6" markerHeight="6" orient="auto">
-              <path d="M0 0 L8 4 L0 8 z" fill="var(--warn)" />
-            </marker>
+            {[
+              ['arrow-plain', 'var(--line-strong)'],
+              ['arrow-warn', 'var(--warn)'],
+              ['arrow-ok', 'var(--add)'],
+            ].map(([id, fill]) => (
+              <marker key={id} id={id} viewBox="0 0 8 8" refX="6" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+                <path d="M0 0 L8 4 L0 8 z" fill={fill} />
+              </marker>
+            ))}
           </defs>
         </svg>
 
@@ -204,54 +170,72 @@ export function PromotionGraph({
           if (!from || !to) return null
           const left = (x(from.col) + NODE_W + x(to.col)) / 2
           const top = (y(from.row) + y(to.row)) / 2 + NODE_H / 2
+          const label = edge.error ? (
+            <span className="text-[11px] text-fg-3">{edge.error}</span>
+          ) : edge.count === 0 ? (
+            <span className="text-[11px] font-medium text-add">in step</span>
+          ) : (
+            <Link
+              to={`/r/${repoId}/compare?base=${encodeURIComponent(edge.toRef)}&head=${encodeURIComponent(edge.fromRef)}`}
+              className="flex flex-col items-center leading-tight hover:underline"
+              title={`${edge.count} changes waiting to reach ${edge.to}`}
+            >
+              <span className={cn('tabular text-sm font-bold', edge.over ? 'text-warn' : 'text-fg')}>
+                {formatNumber(edge.count)}
+              </span>
+              <span className="text-[10px] text-fg-3">
+                waiting{edge.oldest && detailed ? ` · ${shortAge(edge.oldest)}` : ''}
+              </span>
+            </Link>
+          )
           return (
             <div
               key={`label-${edge.from}-${edge.to}`}
-              className="absolute -translate-x-1/2 -translate-y-1/2"
+              className="absolute -translate-x-1/2 -translate-y-1/2 rounded-md border border-line bg-card px-2 py-1"
               style={{ left, top }}
             >
-              <EdgeLabel edge={edge} repoId={repoId} detailed={detailed} />
+              {label}
             </div>
           )
         })}
 
-        {nodes.map((node) => (
-          <div
-            key={node.kind}
-            className={cn(
-              'glass absolute flex flex-col justify-center rounded-lg border bg-card px-3.5',
-              node.cell?.colour === 'yellow'
-                ? 'border-warn/35'
-                : node.cell?.colour === 'red'
-                  ? 'border-del/40'
-                  : 'border-line',
-            )}
-            style={{ left: x(node.col), top: y(node.row), width: NODE_W, height: NODE_H }}
-          >
-            <p className="text-[10px] font-semibold tracking-wider text-fg-3 uppercase">{node.label}</p>
-            {node.cell ? (
-              <>
-                <p className={cn('mt-1 flex items-center gap-2 text-sm font-bold whitespace-nowrap', TEXT[node.cell.colour])}>
-                  <StatusDot colour={node.cell.colour} />
-                  {node.cell.word}
-                </p>
-                <p className="mt-0.5 truncate text-[11px] text-fg-3">
-                  {node.cell.lastDeployedAt ? `changed ${timeAgo(node.cell.lastDeployedAt)}` : 'no changes yet'}
-                </p>
-              </>
-            ) : (
-              <p className="mt-1 text-sm text-fg-3">Source</p>
-            )}
-            {detailed && node.cell && (
-              <p className="mt-1 truncate font-mono text-[10px] text-fg-3/70">
-                {[...new Set(node.cell.tips.filter((t) => t.isPrimary).map((t) => t.branch))].join(' · ')}
+        {nodes.map((node) => {
+          const incoming = edges.filter((edge) => edge.to === node.kind)
+          const state = nodeState(node.cell, role, incoming)
+          const branch = node.cell?.tips.find((tip) => tip.repoId === repoId && tip.isPrimary)
+          return (
+            <div
+              key={node.kind}
+              className={cn(
+                'absolute flex flex-col justify-center rounded-lg border px-3',
+                state.colour === 'yellow'
+                  ? 'border-warn/35 bg-warn-soft/25'
+                  : state.colour === 'red'
+                    ? 'border-del/40 bg-del-soft/25'
+                    : 'border-line bg-surface-2/40',
+              )}
+              style={{ left: x(node.col), top: y(node.row), width: NODE_W, height: NODE_H }}
+            >
+              <p className="text-[10px] font-semibold tracking-wider text-fg-3 uppercase">{node.label}</p>
+              <p className={cn('mt-1 flex items-center gap-1.5 text-[13px] font-bold', TEXT[state.colour])}>
+                <StatusDot colour={state.colour} />
+                {state.word}
               </p>
-            )}
-          </div>
-        ))}
+              {detailed && branch ? (
+                <p className="mt-0.5 truncate font-mono text-[10px] text-fg-3/80" title={branch.branch}>
+                  {branch.branch}
+                </p>
+              ) : (
+                node.cell?.lastDeployedAt && (
+                  <p className="mt-0.5 truncate text-[10px] text-fg-3">
+                    {timeAgo(node.cell.lastDeployedAt)}
+                  </p>
+                )
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )
 }
-
-export type { Edge as PromotionEdge, LagEdge }

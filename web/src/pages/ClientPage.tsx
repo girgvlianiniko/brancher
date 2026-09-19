@@ -6,6 +6,7 @@ import type { CellStatus, ProbeSample, ServiceState } from '../../../shared/stat
 import { useBoard, useClientDetail } from '../api'
 import { PromotionGraph } from '../components/PromotionGraph'
 import { Shell } from '../components/Shell'
+import { ROLE_LABEL } from '../components/ClientMatrix'
 import { Monogram, SERVICE_TAG, SOFT, StatusDot, TEXT } from '../components/StatusBits'
 import { Button, Card, cn, Empty, ErrorBox, Spinner } from '../components/ui'
 import { formatDateTime, formatNumber, timeAgo } from '../lib/format'
@@ -77,7 +78,6 @@ export function ClientPage() {
   const detail = useClientDetail(clientId)
   const board = useBoard()
   const [detailed, setDetailed] = useState(false)
-  const [repoId, setRepoId] = useState<string | null>(null)
 
   if (detail.isPending)
     return (
@@ -97,7 +97,18 @@ export function ClientPage() {
 
   const { row, changes, history } = detail.data
   const cells = row.cells.filter((cell): cell is CellStatus => cell !== null)
-  const repos = [...new Map(cells.flatMap((c) => c.tips).map((t) => [t.repoId, t.repoName])).entries()]
+  // One path per repository, worst backlog first, so the part holding things up is on top.
+  const parts = [...new Map(cells.flatMap((c) => c.tips).map((t) => [t.repoId, t.repoName])).entries()]
+    .map(([repoId, repoName]) => {
+      const lag = cells.flatMap((c) => c.lag.filter((edge) => edge.repoId === repoId))
+      return {
+        repoId,
+        repoName,
+        role: lag.find((edge) => edge.role)?.role ?? null,
+        worst: Math.max(0, ...lag.map((edge) => edge.realCommits)),
+      }
+    })
+    .sort((a, b) => b.worst - a.worst)
   // The shared development row is the source every client is measured from.
   const shared = board.data?.rows.find((r) => r.kind === 'shared' && r.id === 'development')
   const devCell = shared?.cells[board.data?.columns.indexOf('development') ?? 0] ?? null
@@ -136,50 +147,43 @@ export function ClientPage() {
           <div>
             <h2 className="text-sm font-bold">How changes reach this client</h2>
             <p className="mt-0.5 text-[13px] text-fg-3">
-              Every line carries what is waiting on that step. Click a number to see the commits.
+              One path per part. Each number is what is waiting on that step; click it for the commits.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-1.5">
-            <button
-              onClick={() => setRepoId(null)}
-              className={cn(
-                'rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors',
-                repoId === null
-                  ? 'border-accent bg-accent-soft text-accent'
-                  : 'border-line text-fg-3 hover:border-line-strong hover:text-fg',
-              )}
-            >
-              Everything
-            </button>
-            {repos.map(([id, name]) => (
-              <button
-                key={id}
-                onClick={() => setRepoId(id)}
-                className={cn(
-                  'rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors',
-                  repoId === id
-                    ? 'border-accent bg-accent-soft text-accent'
-                    : 'border-line text-fg-3 hover:border-line-strong hover:text-fg',
-                )}
-              >
-                {name}
-              </button>
-            ))}
-            <button
-              onClick={() => setDetailed(!detailed)}
-              className={cn(
-                'ml-1 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors',
-                detailed
-                  ? 'border-accent bg-accent-soft text-accent'
-                  : 'border-line text-fg-3 hover:border-line-strong hover:text-fg',
-              )}
-            >
-              Branch names
-            </button>
-          </div>
+          <button
+            onClick={() => setDetailed(!detailed)}
+            className={cn(
+              'rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors',
+              detailed
+                ? 'border-accent bg-accent-soft text-accent'
+                : 'border-line text-fg-3 hover:border-line-strong hover:text-fg',
+            )}
+          >
+            Branch names
+          </button>
         </div>
-        <div className="glass rounded-lg border border-line bg-card p-5">
-          <PromotionGraph cells={cells} devCell={devCell} repoId={repoId} detailed={detailed} />
+
+        <div className="space-y-3">
+          {parts.map(({ repoId, repoName, role, worst }) => (
+            <div key={repoId} className="glass rounded-lg border border-line bg-card px-5 py-4">
+              <div className="mb-3 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+                <h3 className="text-[15px] font-bold">{role ? ROLE_LABEL[role] : repoName}</h3>
+                <span className="font-mono text-[11px] text-fg-3">{repoName}</span>
+                {worst > 0 && (
+                  <span className="ml-auto text-[13px] text-fg-3">
+                    worst step <span className="tabular font-semibold text-warn">{formatNumber(worst)}</span> waiting
+                  </span>
+                )}
+              </div>
+              <PromotionGraph
+                cells={cells}
+                devCell={devCell}
+                repoId={repoId}
+                role={role}
+                detailed={detailed}
+              />
+            </div>
+          ))}
         </div>
       </section>
 
