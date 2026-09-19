@@ -133,20 +133,28 @@ export async function readTokenHealth(token: string): Promise<TokenHealth> {
   return health
 }
 
-/** Health is cached: the settings page polls, and GitHub does not need to hear it every time. */
+/**
+ * Health is cached: several browsers and a wall screen all poll the settings endpoint,
+ * and GitHub does not need to hear from each of them. The promise is cached rather than
+ * the value, so simultaneous first callers share one request.
+ */
 const HEALTH_TTL = 5 * 60_000
-let cached: { token: string; at: number; health: TokenHealth } | null = null
+let cached: { token: string; at: number; health: Promise<TokenHealth> } | null = null
 
-export async function tokenHealth(): Promise<TokenHealth | null> {
+export function tokenHealth(): Promise<TokenHealth | null> {
   const token = githubToken()
   if (!token) {
     cached = null
-    return null
+    return Promise.resolve(null)
   }
   if (cached && cached.token === token && Date.now() - cached.at < HEALTH_TTL) return cached.health
 
-  const health = await readTokenHealth(token)
+  const health = readTokenHealth(token)
   cached = { token, at: Date.now(), health }
+  // A thrown request should not stick around as the cached answer.
+  health.catch(() => {
+    if (cached?.health === health) cached = null
+  })
   return health
 }
 
