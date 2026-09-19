@@ -1,3 +1,7 @@
 packages:
   - server
   - web
+
+# esbuild ships a prebuilt binary through its install script; vite will not start without it.
+allowBuilds:
+  esbuild: true

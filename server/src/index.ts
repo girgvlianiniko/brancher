@@ -10,12 +10,20 @@ import { assertRef, badRequest, HttpError } from './errors'
 import { GitCommandError } from './git/exec'
 import { addRepo, getRepo, listRepos, removeRepo } from './repos'
 import { sourceFor } from './sources'
+import { getBoard, refreshNow, startEngine } from './status/engine'
 
 const app = new Hono().basePath('/api')
 
 app.get('/health', (c) => c.json({ ok: true, githubToken: Boolean(process.env.GITHUB_TOKEN?.trim()) } satisfies HealthResponse))
 
 app.get('/repos', (c) => c.json(listRepos()))
+
+app.get('/board', (c) => c.json(getBoard()))
+
+app.post('/board/refresh', async (c) => {
+  await refreshNow()
+  return c.json(getBoard())
+})
 
 app.post('/repos', async (c) => {
   const input = (await c.req.json().catch(() => null)) as AddRepoInput | null
@@ -76,4 +84,5 @@ app.onError((error, c) => {
 const port = Number(process.env.BRANCHER_PORT) || 4317
 serve({ fetch: app.fetch, port, hostname: '127.0.0.1' }, () => {
   console.log(`brancher api on http://127.0.0.1:${port}  (${listRepos().length} repos)`)
+  startEngine()
 })

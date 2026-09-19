@@ -1,5 +1,6 @@
 import { keepPreviousData, QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
+import type { BoardResponse } from '../../shared/status'
 import type {
   AddRepoInput,
   BranchesResponse,
@@ -95,5 +96,26 @@ export function useFetchRepo(id: string) {
   return useMutation({
     mutationFn: () => request<{ ok: true }>(`/repos/${id}/fetch`, { method: 'POST' }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: repoKey(id) }),
+  })
+}
+
+// ---------------------------------------------------------------- status board
+
+export const useBoard = (refreshMs = 30_000) =>
+  useQuery({
+    queryKey: ['board'],
+    queryFn: () => request<BoardResponse>('/board'),
+    refetchInterval: refreshMs,
+    staleTime: 0,
+  })
+
+export function useRefreshBoard() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => request<BoardResponse>('/board/refresh', { method: 'POST' }),
+    onSuccess: (board) => {
+      queryClient.setQueryData(['board'], board)
+      return queryClient.invalidateQueries({ queryKey: ['client'] })
+    },
   })
 }
