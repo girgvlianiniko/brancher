@@ -1,8 +1,10 @@
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 
 import type { RepoConfig, WorkingTreeStatus } from '../../../shared/types'
-import { useOverview } from '../api'
+import { useBranches, useBranchOverview, useOverview } from '../api'
 import { ActivityChart } from '../components/ActivityChart'
+import { BranchOverviewPanel } from '../components/BranchOverviewPanel'
+import { Combobox } from '../components/Combobox'
 import { Card, Empty, ErrorBox, Sha, Spinner, Stat } from '../components/ui'
 import { formatNumber, plural, timeAgo } from '../lib/format'
 
@@ -17,7 +19,58 @@ function workingTree(status: WorkingTreeStatus) {
 }
 
 export function OverviewTab({ repo }: { repo: RepoConfig }) {
+  // `?branch=` narrows the whole tab to one branch, and is what the status board links to.
+  const [params, setParams] = useSearchParams()
+  const branch = params.get('branch')
   const overview = useOverview(repo.id)
+  const branches = useBranches(repo.id)
+  const branchOverview = useBranchOverview(repo.id, branch)
+
+  const picker = (
+    <div className="mb-4 flex flex-wrap items-center gap-2">
+      <span className="text-[13px] text-fg-3">Showing</span>
+      <div className="min-w-64">
+        <Combobox
+          placeholder={branch ?? 'The whole repository'}
+          empty="No branch matches"
+          options={[
+            { value: '', label: 'The whole repository', selected: !branch },
+            ...(branches.data?.branches ?? []).map((candidate) => ({
+              value: candidate.name,
+              label: candidate.name,
+              selected: candidate.name === branch,
+              meta: candidate.date ? timeAgo(candidate.date) : undefined,
+            })),
+          ]}
+          onSelect={(value) => setParams(value ? { branch: value } : {}, { replace: true })}
+        />
+      </div>
+      {branch && (
+        <button
+          onClick={() => setParams({}, { replace: true })}
+          className="rounded-lg border border-line px-2.5 py-1 text-xs font-medium text-fg-3 transition-colors hover:border-line-strong hover:text-fg"
+        >
+          Show the whole repository
+        </button>
+      )}
+    </div>
+  )
+
+  if (branch) {
+    return (
+      <>
+        {picker}
+        {branchOverview.isPending ? (
+          <Spinner label="Reading branch…" />
+        ) : branchOverview.isError ? (
+          <ErrorBox error={branchOverview.error} />
+        ) : (
+          <BranchOverviewPanel repoId={repo.id} data={branchOverview.data} />
+        )}
+      </>
+    )
+  }
+
   if (overview.isPending) return <Spinner label="Reading repo…" />
   if (overview.isError) return <ErrorBox error={overview.error} />
   const data = overview.data
@@ -29,6 +82,7 @@ export function OverviewTab({ repo }: { repo: RepoConfig }) {
 
   return (
     <div className="space-y-5">
+      {picker}
       <div className="grid gap-3 sm:grid-cols-2">
         <Card title="Checked out" bodyClassName="space-y-1.5 text-sm">
           <div className="flex flex-wrap items-baseline gap-x-2">

@@ -172,3 +172,29 @@ export interface HealthResponse {
   ok: true
   githubToken: boolean
 }
+
+/**
+ * Everything worth knowing about one branch: the same questions the repo overview
+ * answers, asked of a single branch rather than the whole clone.
+ */
+export interface BranchOverview {
+  name: string
+  defaultBranch: string | null
+  /** The commit the branch points at. */
+  tip: Commit | null
+  /** Commits reachable from the branch; `null` when the source cannot count them. */
+  commits: number | null
+  /** How far the branch has moved away from the default branch. */
+  vsDefault: { ahead: number; behind: number } | null
+  /** Files that differ from the default branch since they split. */
+  filesChanged: number | null
+  upstream: string | null
+  upstreamAhead: number | null
+  upstreamBehind: number | null
+  /** Who has committed to this branch, most first. */
+  contributors: Contributor[]
+  /** Commits per week on this branch, oldest first. */
+  activity: ActivityWeek[]
+  /** Newest first. */
+  recent: Commit[]
+}

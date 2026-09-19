@@ -1,6 +1,7 @@
 import type {
   ActivityWeek,
   Branch,
+  BranchOverview,
   BranchesResponse,
   BranchPosition,
   Comparison,
@@ -320,6 +321,36 @@ export class GitHubSource implements GitSource {
       if (!unique.has(item.sha)) unique.set(item.sha, toCommit(item, refsBySha.get(item.sha)))
     }
     return childrenFirst([...unique.values()]).slice(0, limit)
+  }
+
+  /**
+   * GitHub has no cheap per-branch contributor or weekly-activity figures, so those come
+   * back empty rather than wrong. Everything else is the compare API.
+   */
+  async branchOverview(name: string): Promise<BranchOverview> {
+    const info = await this.info()
+    const defaultBranch = info.default_branch
+    const [branch, comparison] = await Promise.all([
+      this.get<{ name: string; commit: GhCommitItem }>(`${this.base}/branches/${encodeRef(name)}`),
+      name === defaultBranch
+        ? Promise.resolve(null)
+        : this.compare(defaultBranch, name).catch(() => null),
+    ])
+
+    return {
+      name,
+      defaultBranch,
+      tip: toCommit(branch.commit),
+      commits: null,
+      vsDefault: comparison ? { ahead: comparison.ahead, behind: comparison.behind } : { ahead: 0, behind: 0 },
+      filesChanged: comparison ? comparison.files.length : null,
+      upstream: null,
+      upstreamAhead: null,
+      upstreamBehind: null,
+      contributors: [],
+      activity: [],
+      recent: comparison ? comparison.headOnly.slice(0, 25) : [],
+    }
   }
 
   /** Built on the compare API, so each side lists at most 250 commits. */

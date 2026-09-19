@@ -10,6 +10,7 @@ import type {
 import type {
   AddRepoInput,
   BranchesResponse,
+  BranchOverview,
   BranchPosition,
   Comparison,
   Commit,
@@ -215,3 +216,11 @@ export function useSetLayout() {
     onSuccess: (board) => queryClient.setQueryData(['board'], board),
   })
 }
+
+export const useBranchOverview = (repoId: string, branch: string | null) =>
+  useQuery({
+    queryKey: [...repoKey(repoId), 'branch', branch],
+    enabled: Boolean(branch),
+    queryFn: () => request<BranchOverview>(`/repos/${repoId}/branch?name=${encodeURIComponent(branch!)}`),
+    placeholderData: keepPreviousData,
+  })

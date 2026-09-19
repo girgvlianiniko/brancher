@@ -265,7 +265,7 @@ export function PromotionGraph({
           return branch ? (
             <Link
               key={node.kind}
-              to={`/r/${repoId}/branches?branch=${encodeURIComponent(branch.branch)}`}
+              to={`/r/${repoId}/overview?branch=${encodeURIComponent(branch.branch)}`}
               title={`Open ${branch.branch} in the repository tools`}
               className={cn(box, tone, 'transition-colors hover:border-accent hover:bg-accent-soft/25')}
               style={place}

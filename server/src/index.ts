@@ -101,6 +101,11 @@ app.get('/repos/:id/graph', async (c) => {
   return c.json(await sourceFor(getRepo(c.req.param('id'))).graph(limit, scope))
 })
 
+app.get('/repos/:id/branch', async (c) => {
+  const name = assertRef(c.req.query('name'), 'name')
+  return c.json(await sourceFor(getRepo(c.req.param('id'))).branchOverview(name))
+})
+
 app.get('/repos/:id/compare', async (c) => {
   const base = assertRef(c.req.query('base'), 'base')
   const head = assertRef(c.req.query('head'), 'head')

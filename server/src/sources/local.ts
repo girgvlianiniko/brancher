@@ -14,6 +14,7 @@ import type {
   Tag,
   WorkingTreeStatus,
 } from '../../../shared/types'
+import type { BranchOverview } from '../../../shared/types'
 import { activitySince, bucketByWeek } from '../activity'
 import { badRequest } from '../errors'
 import { git, RS, US } from '../git/exec'
@@ -376,6 +377,56 @@ export class LocalSource implements GitSource {
       behind,
       aheadShas: lines(aheadShas),
       behindShas: lines(behindShas),
+    }
+  }
+
+  async branchOverview(name: string): Promise<BranchOverview> {
+    if (!(await this.refExists(name))) throw badRequest(`Unknown branch: ${name}`)
+    const defaultBranch = await this.defaultBranch()
+    const remotes = (await this.remotes()).map((remote) => remote.name)
+
+    const [tipOutput, commitCount, shortlog, activityOutput, recentOutput, refInfo, counts, shortstat] =
+      await Promise.all([
+        this.run(['log', '-1', `--format=${COMMIT_FORMAT}`, name], { allowFail: true }),
+        this.run(['rev-list', '--count', name], { allowFail: true }),
+        this.run(['shortlog', '-sne', name], { allowFail: true }),
+        this.run(['log', `--since=${activitySince()}`, '--format=%aI', name], { allowFail: true }),
+        this.run(['log', '--max-count=25', `--format=${COMMIT_FORMAT}`, name], { allowFail: true }),
+        this.run(
+          ['for-each-ref', `--format=%(upstream:short)%1f%(upstream:track,nobracket)`, `refs/heads/${name}`],
+          { allowFail: true },
+        ),
+        defaultBranch
+          ? this.run(['rev-list', '--left-right', '--count', `${defaultBranch}...${name}`], { allowFail: true })
+          : Promise.resolve(''),
+        defaultBranch
+          ? this.run(['diff', '--shortstat', `${defaultBranch}...${name}`], { allowFail: true })
+          : Promise.resolve(''),
+      ])
+
+    const [upstream, track] = refInfo.trim().split(US)
+    const tracking = parseTrack(track ?? '')
+    const [behind, ahead] = counts.trim().split(/\s+/).map(Number)
+
+    return {
+      name,
+      defaultBranch,
+      tip: parseCommits(tipOutput, remotes)[0] ?? null,
+      commits: commitCount.trim() ? Number(commitCount.trim()) : null,
+      vsDefault: Number.isFinite(ahead) && Number.isFinite(behind) ? { ahead, behind } : null,
+      // Empty output means nothing differs, not that we could not tell.
+      filesChanged: defaultBranch ? Number(shortstat.match(/(\d+) files? changed/)?.[1] ?? 0) : null,
+      upstream: upstream || null,
+      upstreamAhead: upstream ? tracking.ahead : null,
+      upstreamBehind: upstream ? tracking.behind : null,
+      contributors: shortlog
+        .split('\n')
+        .map((line) => line.match(/^\s*(\d+)\t(.*?)(?: <(.*)>)?$/))
+        .filter((match): match is RegExpMatchArray => match !== null)
+        .map((match) => ({ commits: Number(match[1]), name: match[2], email: match[3] || null }))
+        .slice(0, 12),
+      activity: bucketByWeek(activityOutput.split('\n').filter(Boolean)),
+      recent: parseCommits(recentOutput, remotes),
     }
   }
 
