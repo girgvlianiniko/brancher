@@ -1,8 +1,8 @@
-import { ArrowLeft, ExternalLink, Settings2 } from 'lucide-react'
+import { ArrowLeft, ChevronRight, ExternalLink, Settings2 } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router'
 
-import type { CellStatus, ProbeSample, ServiceState } from '../../../shared/status'
+import type { CellStatus, ProbeSample, ServiceKind, ServiceState } from '../../../shared/status'
 import { useBoard, useClientDetail } from '../api'
 import { PromotionGraph } from '../components/PromotionGraph'
 import { Shell } from '../components/Shell'
@@ -10,6 +10,26 @@ import { ROLE_LABEL } from '../components/ClientMatrix'
 import { Monogram, SERVICE_TAG, SOFT, StatusDot, TEXT } from '../components/StatusBits'
 import { Button, Card, cn, Empty, ErrorBox, Spinner } from '../components/ui'
 import { formatDateTime, formatNumber, timeAgo } from '../lib/format'
+
+/**
+ * What people call the two halves of the product. Website leads the frontend and the API
+ * leads the backend, with the sockets under it, because that is the order anyone asks
+ * about them in.
+ */
+const PART_ORDER: (ServiceKind | null)[] = ['front', 'admin', 'api', 'ws', 'chat', 'pay', null]
+
+const GROUPS = [
+  {
+    name: 'Frontend',
+    note: 'what players and staff open',
+    holds: (role: ServiceKind | null) => role === 'front' || role === 'admin',
+  },
+  {
+    name: 'Backend',
+    note: 'the services behind them',
+    holds: (role: ServiceKind | null) => role !== 'front' && role !== 'admin',
+  },
+]
 
 /** One environment, expanded: status, what is waiting, and what was checked. */
 function EnvCard({ cell }: { cell: CellStatus }) {
@@ -97,7 +117,6 @@ export function ClientPage() {
 
   const { row, changes, history } = detail.data
   const cells = row.cells.filter((cell): cell is CellStatus => cell !== null)
-  // One path per repository, worst backlog first, so the part holding things up is on top.
   const parts = [...new Map(cells.flatMap((c) => c.tips).map((t) => [t.repoId, t.repoName])).entries()]
     .map(([repoId, repoName]) => {
       const lag = cells.flatMap((c) => c.lag.filter((edge) => edge.repoId === repoId))
@@ -108,7 +127,7 @@ export function ClientPage() {
         worst: Math.max(0, ...lag.map((edge) => edge.realCommits)),
       }
     })
-    .sort((a, b) => b.worst - a.worst)
+    .sort((a, b) => PART_ORDER.indexOf(a.role) - PART_ORDER.indexOf(b.role))
   // The shared development row is the source every client is measured from.
   const shared = board.data?.rows.find((r) => r.kind === 'shared' && r.id === 'development')
   const devCell = shared?.cells[board.data?.columns.indexOf('development') ?? 0] ?? null
@@ -164,26 +183,59 @@ export function ClientPage() {
         </div>
 
         <div className="space-y-3">
-          {parts.map(({ repoId, repoName, role, worst }) => (
-            <div key={repoId} className="glass rounded-lg border border-line bg-card px-5 py-4">
-              <div className="mb-3 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-                <h3 className="text-[15px] font-bold">{role ? ROLE_LABEL[role] : repoName}</h3>
-                <span className="font-mono text-[11px] text-fg-3">{repoName}</span>
-                {worst > 0 && (
+          {GROUPS.map((group) => {
+            const members = parts.filter((part) => group.holds(part.role))
+            if (members.length === 0) return null
+            const worst = Math.max(0, ...members.map((part) => part.worst))
+            return (
+              <details key={group.name} open className="glass group rounded-lg border border-line bg-card">
+                <summary className="flex cursor-pointer list-none items-center gap-2.5 px-5 py-3.5">
+                  <ChevronRight
+                    className="size-4 shrink-0 text-fg-3 transition-transform group-open:rotate-90"
+                    aria-hidden
+                  />
+                  <h3 className="text-[15px] font-bold">{group.name}</h3>
+                  <span className="text-[13px] text-fg-3">{group.note}</span>
                   <span className="ml-auto text-[13px] text-fg-3">
-                    worst step <span className="tabular font-semibold text-warn">{formatNumber(worst)}</span> waiting
+                    {worst > 0 ? (
+                      <>
+                        worst step{' '}
+                        <span className="tabular font-semibold text-warn">{formatNumber(worst)}</span> waiting
+                      </>
+                    ) : (
+                      <span className="text-add">everything in step</span>
+                    )}
                   </span>
-                )}
-              </div>
-              <PromotionGraph
-                cells={cells}
-                devCell={devCell}
-                repoId={repoId}
-                role={role}
-                detailed={detailed}
-              />
-            </div>
-          ))}
+                </summary>
+
+                <div className="space-y-5 border-t border-line px-5 py-4">
+                  {members.map(({ repoId, repoName, role, worst: partWorst }) => (
+                    <div key={repoId}>
+                      <div className="mb-2.5 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+                        <h4 className="text-sm font-semibold">{role ? ROLE_LABEL[role] : repoName}</h4>
+                        <span className="font-mono text-[11px] text-fg-3">{repoName}</span>
+                        {partWorst > 0 && (
+                          <span className="ml-auto text-xs text-fg-3">
+                            <span className="tabular font-semibold text-warn">
+                              {formatNumber(partWorst)}
+                            </span>{' '}
+                            waiting at the worst step
+                          </span>
+                        )}
+                      </div>
+                      <PromotionGraph
+                        cells={cells}
+                        devCell={devCell}
+                        repoId={repoId}
+                        role={role}
+                        detailed={detailed}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </details>
+            )
+          })}
         </div>
       </section>
 

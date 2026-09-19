@@ -47,6 +47,7 @@ function rolesOf(row: BoardRow): ServiceKind[] {
 }
 
 interface RoleState {
+  unmeasured: boolean
   down: boolean
   slow: boolean
   behind: number
@@ -63,7 +64,16 @@ const COLUMNS = (count: number) => `4.75rem 1fr repeat(${count}, minmax(4.5rem, 
 
 function roleState(cell: CellStatus | null, role: ServiceKind): RoleState {
   if (!cell)
-    return { down: false, slow: false, behind: 0, overThreshold: false, oldest: null, known: false, latency: null }
+    return {
+      unmeasured: false,
+      down: false,
+      slow: false,
+      behind: 0,
+      overThreshold: false,
+      oldest: null,
+      known: false,
+      latency: null,
+    }
   const service = cell.services.find((s) => s.kind === role)
   const edges = cell.lag.filter((e) => e.role === role)
   const oldest = edges
@@ -71,6 +81,8 @@ function roleState(cell: CellStatus | null, role: ServiceKind): RoleState {
     .filter((value): value is string => Boolean(value))
     .sort()[0]
   return {
+    // Every comparison for this part failed, so its backlog is unknown rather than zero.
+    unmeasured: edges.length > 0 && edges.every((edge) => edge.error !== null),
     down: service?.status === 'down',
     slow: (service?.latencyMs ?? 0) > SLOW_MS && service?.status === 'up',
     behind: edges.reduce((sum, e) => sum + e.realCommits, 0),
@@ -99,6 +111,14 @@ function MatrixCell({ state }: { state: RoleState }) {
     return (
       <span className={cn(CELL, 'bg-del-soft/60 text-[13px] font-semibold text-del')} title={title}>
         down
+      </span>
+    )
+  }
+
+  if (state.unmeasured) {
+    return (
+      <span className={cn(CELL, 'text-[13px] text-fg-3')} title="This repository could not be read">
+        ?
       </span>
     )
   }

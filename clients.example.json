@@ -31,13 +31,13 @@
       },
       {
         "kind": "ws",
-        "url": "https://ws.oribet.space/",
-        "enabled": false
+        "url": "https://ws.oribet.space/socket.io/?EIO=4&transport=polling",
+        "enabled": true
       },
       {
         "kind": "chat",
-        "url": "https://chat.oribet.space/",
-        "enabled": false
+        "url": "https://chat.oribet.space/socket.io/?EIO=4&transport=polling",
+        "enabled": true
       }
     ],
     "repos": [
@@ -58,6 +58,20 @@
         "branches": [
           "develop"
         ]
+      },
+      {
+        "repoId": "websocket-node",
+        "branches": [
+          "develop"
+        ],
+        "role": "ws"
+      },
+      {
+        "repoId": "chat-node",
+        "branches": [
+          "develop"
+        ],
+        "role": "chat"
       }
     ]
   },
@@ -89,13 +103,13 @@
             },
             {
               "kind": "ws",
-              "url": "https://ws.asdfbet-staging.com/",
-              "enabled": false
+              "url": "https://ws.asdfbet-staging.com/socket.io/?EIO=4&transport=polling",
+              "enabled": true
             },
             {
               "kind": "chat",
-              "url": "https://chat.asdfbet-staging.com/",
-              "enabled": false
+              "url": "https://chat.asdfbet-staging.com/socket.io/?EIO=4&transport=polling",
+              "enabled": true
             },
             {
               "kind": "pay",
@@ -123,6 +137,20 @@
               "branches": [
                 "global_staging"
               ]
+            },
+            {
+              "repoId": "websocket-node",
+              "branches": [
+                "global_staging"
+              ],
+              "role": "ws"
+            },
+            {
+              "repoId": "chat-node",
+              "branches": [
+                "global_staging"
+              ],
+              "role": "chat"
             }
           ]
         },
@@ -145,6 +173,16 @@
               "kind": "api",
               "url": "https://api.asdfbet.com/health-check",
               "enabled": true
+            },
+            {
+              "kind": "ws",
+              "url": "https://ws.asdfbet.com/socket.io/?EIO=4&transport=polling",
+              "enabled": true
+            },
+            {
+              "kind": "chat",
+              "url": "https://chat.asdfbet.com/socket.io/?EIO=4&transport=polling",
+              "enabled": true
             }
           ],
           "repos": [
@@ -165,6 +203,20 @@
               "branches": [
                 "prod_korean"
               ]
+            },
+            {
+              "repoId": "websocket-node",
+              "branches": [
+                "prod_korean"
+              ],
+              "role": "ws"
+            },
+            {
+              "repoId": "chat-node",
+              "branches": [
+                "prod_korean"
+              ],
+              "role": "chat"
             }
           ]
         },
@@ -214,6 +266,16 @@
               "kind": "api",
               "url": "https://api.efsobet-staging.com/health-check",
               "enabled": true
+            },
+            {
+              "kind": "ws",
+              "url": "https://ws.efsobet-staging.com/socket.io/?EIO=4&transport=polling",
+              "enabled": true
+            },
+            {
+              "kind": "chat",
+              "url": "https://chat.efsobet-staging.com/socket.io/?EIO=4&transport=polling",
+              "enabled": true
             }
           ],
           "repos": [
@@ -236,6 +298,20 @@
               "branches": [
                 "global_staging"
               ]
+            },
+            {
+              "repoId": "websocket-node",
+              "branches": [
+                "global_staging"
+              ],
+              "role": "ws"
+            },
+            {
+              "repoId": "chat-node",
+              "branches": [
+                "global_staging"
+              ],
+              "role": "chat"
             }
           ]
         },
@@ -258,6 +334,16 @@
               "kind": "api",
               "url": "https://api.efsobet.com/health-check",
               "enabled": true
+            },
+            {
+              "kind": "ws",
+              "url": "https://ws.efsobet.com/socket.io/?EIO=4&transport=polling",
+              "enabled": true
+            },
+            {
+              "kind": "chat",
+              "url": "https://chat.efsobet.com/socket.io/?EIO=4&transport=polling",
+              "enabled": true
             }
           ],
           "repos": [
@@ -278,6 +364,20 @@
               "branches": [
                 "efsobet-prod"
               ]
+            },
+            {
+              "repoId": "websocket-node",
+              "branches": [
+                "efsobet-prod"
+              ],
+              "role": "ws"
+            },
+            {
+              "repoId": "chat-node",
+              "branches": [
+                "efsobet-prod"
+              ],
+              "role": "chat"
             }
           ]
         }
@@ -307,6 +407,16 @@
               "kind": "api",
               "url": "https://api.mycryptobet.com/health-check",
               "enabled": true
+            },
+            {
+              "kind": "ws",
+              "url": "https://ws.mycryptobet.com/socket.io/?EIO=4&transport=polling",
+              "enabled": true
+            },
+            {
+              "kind": "chat",
+              "url": "https://chat.mycryptobet.com/socket.io/?EIO=4&transport=polling",
+              "enabled": true
             }
           ],
           "repos": [
@@ -327,6 +437,20 @@
               "branches": [
                 "afrika_prod"
               ]
+            },
+            {
+              "repoId": "websocket-node",
+              "branches": [
+                "afrika_prod"
+              ],
+              "role": "ws"
+            },
+            {
+              "repoId": "chat-node",
+              "branches": [
+                "afrika_prod"
+              ],
+              "role": "chat"
             }
           ]
         }
@@ -356,6 +480,16 @@
               "kind": "api",
               "url": "https://api.oribets.com/health-check",
               "enabled": true
+            },
+            {
+              "kind": "ws",
+              "url": "https://ws.oribets.com/socket.io/?EIO=4&transport=polling",
+              "enabled": true
+            },
+            {
+              "kind": "chat",
+              "url": "https://chat.oribets.com/socket.io/?EIO=4&transport=polling",
+              "enabled": true
             }
           ],
           "repos": [
@@ -377,6 +511,20 @@
               "branches": [
                 "global_staging"
               ]
+            },
+            {
+              "repoId": "websocket-node",
+              "branches": [
+                "main"
+              ],
+              "role": "ws"
+            },
+            {
+              "repoId": "chat-node",
+              "branches": [
+                "main"
+              ],
+              "role": "chat"
             }
           ]
         }

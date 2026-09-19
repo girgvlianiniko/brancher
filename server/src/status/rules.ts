@@ -145,6 +145,10 @@ export function verdict(input: {
   }
 
   const pending = lag.reduce((total, edge) => total + edge.realCommits, 0)
+  // A repo we could not read reports zero changes waiting, which would otherwise pass for
+  // up to date. Say so instead of quietly counting it as fine.
+  const unreadable = lag.filter((edge) => edge.error).length
+  const caveat = unreadable > 0 ? `, ${plural(unreadable, 'part')} could not be checked` : ''
 
   // Nothing is probed here, so "working" would be a claim the board cannot make.
   if (services.length === 0) {
@@ -157,8 +161,9 @@ export function verdict(input: {
     }
   }
 
-  const sentence = pending > 0 ? `${plural(pending, 'change')} waiting, within limits` : 'Up to date'
-  return { colour: 'green', word: 'Working', sentence, lastDeployedAt, autoDeploy }
+  const sentence =
+    (pending > 0 ? `${plural(pending, 'change')} waiting, within limits` : 'Up to date') + caveat
+  return { colour: unreadable > 0 ? 'grey' : 'green', word: 'Working', sentence, lastDeployedAt, autoDeploy }
 }
 
 export { SERVICE_LABEL }
