@@ -40,6 +40,16 @@ Clones of the repos you bind, sitting beside brancher so the first-run scan find
 
 Configuration and behaviour are described in `STATUS-BOARD-PLAN.md`.
 
+`?kiosk=1` gives the wall-screen layout, and `?theme=light` or `?theme=dark` pins the theme from the
+address, so a tablet can be pointed at one URL and left alone.
+
+## Design
+
+The interface follows [Arcane](https://github.com/ofkm/arcane)'s design system: shadcn tokens on a
+violet base, a 14px radius, Montserrat for the interface and Geist Mono for branch names. Dark is the
+default. Every screen, including the repository tools, sits in one frame with one sidebar, so nothing
+ever feels like a different program.
+
 On first start the server scans the folder brancher sits in and adds every git repo it finds. Add more from the sidebar: a local folder path, or `owner/repo` for GitHub.
 
 ## What it shows

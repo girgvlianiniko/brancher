@@ -14,12 +14,12 @@ export function Button({
   return (
     <button
       className={cn(
-        'inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-md text-sm font-medium transition-colors',
-        size === 'icon' ? 'w-8' : 'px-3',
-        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:pointer-events-none disabled:opacity-50',
-        variant === 'default' && 'border border-line bg-surface text-fg hover:bg-surface-2',
-        variant === 'primary' && 'bg-accent text-on-accent hover:opacity-90',
-        variant === 'ghost' && 'text-fg-2 hover:bg-surface-2 hover:text-fg',
+        'inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg text-[13px] font-medium transition-colors',
+        size === 'icon' ? 'w-9' : 'px-3.5',
+        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:pointer-events-none disabled:opacity-45',
+        variant === 'default' && 'border border-line bg-surface text-fg-2 hover:border-line-strong hover:text-fg',
+        variant === 'primary' && 'bg-fg text-bg hover:opacity-88',
+        variant === 'ghost' && 'text-fg-3 hover:bg-surface-2 hover:text-fg',
         className,
       )}
       {...props}
@@ -43,17 +43,17 @@ export function Card({
   bodyClassName?: string
 }) {
   return (
-    <section className={cn('min-w-0 rounded-lg border border-line bg-surface', className)}>
+    <section className={cn('min-w-0 rounded-xl border border-line bg-surface', className)}>
       {(title || action) && (
-        <header className="flex flex-wrap items-start justify-between gap-2 border-b border-line px-4 py-3">
+        <header className="flex flex-wrap items-start justify-between gap-3 px-5 pt-4 pb-3">
           <div className="min-w-0">
-            {title && <h2 className="text-sm font-semibold">{title}</h2>}
-            {subtitle && <p className="mt-0.5 text-xs text-fg-3">{subtitle}</p>}
+            {title && <h2 className="text-sm font-semibold tracking-tight">{title}</h2>}
+            {subtitle && <p className="mt-1 text-[13px] text-fg-3">{subtitle}</p>}
           </div>
           {action}
         </header>
       )}
-      <div className={cn('p-4', bodyClassName)}>{children}</div>
+      <div className={cn('px-5 pb-5', bodyClassName)}>{children}</div>
     </section>
   )
 }
@@ -71,7 +71,7 @@ export function Segmented<T extends string | number>({
   label: string
 }) {
   return (
-    <div role="radiogroup" aria-label={label} className="inline-flex rounded-md border border-line bg-surface p-0.5">
+    <div role="radiogroup" aria-label={label} className="inline-flex rounded-lg border border-line bg-surface p-0.5">
       {options.map((option) => (
         <button
           key={String(option.value)}
@@ -79,8 +79,8 @@ export function Segmented<T extends string | number>({
           aria-checked={option.value === value}
           onClick={() => onChange(option.value)}
           className={cn(
-            'h-7 rounded px-2.5 text-xs font-medium transition-colors',
-            option.value === value ? 'bg-accent-soft text-accent' : 'text-fg-2 hover:text-fg',
+            'h-7 rounded-md px-2.5 text-xs font-medium transition-colors',
+            option.value === value ? 'bg-surface-2 text-fg' : 'text-fg-3 hover:text-fg',
           )}
         >
           {option.label}
@@ -92,7 +92,7 @@ export function Segmented<T extends string | number>({
 
 export function Spinner({ label = 'Loading…' }: { label?: string }) {
   return (
-    <div className="flex items-center gap-2 p-6 text-sm text-fg-3">
+    <div className="flex items-center gap-2 px-2 py-10 text-sm text-fg-3">
       <Loader2 className="size-4 animate-spin" aria-hidden />
       {label}
     </div>
@@ -101,7 +101,7 @@ export function Spinner({ label = 'Loading…' }: { label?: string }) {
 
 export function ErrorBox({ error }: { error: unknown }) {
   return (
-    <div role="alert" className="flex items-start gap-2 rounded-md border border-del/40 bg-surface p-3 text-sm text-fg">
+    <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-del/35 bg-del-soft px-4 py-3 text-sm text-fg">
       <AlertTriangle className="mt-0.5 size-4 shrink-0 text-del" aria-hidden />
       <span>{error instanceof Error ? error.message : 'Something went wrong'}</span>
     </div>
@@ -109,7 +109,7 @@ export function ErrorBox({ error }: { error: unknown }) {
 }
 
 export function Empty({ children }: { children: ReactNode }) {
-  return <p className="p-6 text-center text-sm text-fg-3">{children}</p>
+  return <p className="px-2 py-8 text-center text-[13px] text-fg-3">{children}</p>
 }
 
 export function Sha({ sha, className }: { sha: string; className?: string }) {
@@ -145,10 +145,10 @@ export function RefBadge({ refName }: { refName: CommitRef }) {
 
 export function Stat({ label, value, hint }: { label: string; value: ReactNode; hint?: ReactNode }) {
   return (
-    <div className="min-w-0 rounded-lg border border-line bg-surface px-4 py-3">
-      <div className="text-xs text-fg-3">{label}</div>
-      <div className="tabular mt-1 truncate text-2xl font-semibold">{value}</div>
-      {hint && <div className="mt-0.5 truncate text-xs text-fg-3">{hint}</div>}
+    <div className="min-w-0 rounded-xl border border-line bg-surface px-4 py-3.5">
+      <div className="label text-fg-3">{label}</div>
+      <div className="figure mt-2 truncate text-[28px]">{value}</div>
+      {hint && <div className="mt-1.5 truncate text-xs text-fg-3">{hint}</div>}
     </div>
   )
 }

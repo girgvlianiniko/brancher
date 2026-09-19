@@ -3,13 +3,26 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Brancher</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>" />
+    <title>Brancher — status</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400..800&family=Geist+Mono:wght@400..600&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='4' y='4' width='24' height='24' rx='7' fill='%238b5cf6'/></svg>"
+    />
     <script>
       // Apply the saved theme before first paint so there is no flash of the wrong one.
       try {
-        const theme = localStorage.getItem('brancher.theme')
-        if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme
+        // ?theme=light|dark wins, so a wall screen can be pinned from its URL.
+        const forced = new URLSearchParams(location.search).get('theme')
+        const stored = localStorage.getItem('brancher.theme')
+        const theme = forced === 'light' || forced === 'dark' ? forced : stored
+        // Dark is the default for a monitoring screen; light is opt-in.
+        document.documentElement.dataset.theme = theme === 'light' ? 'light' : 'dark'
       } catch {}
     </script>
   </head>

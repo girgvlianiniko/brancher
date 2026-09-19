@@ -12,6 +12,7 @@ import {
   useSaveClient,
   useSuggestedServices,
 } from '../api'
+import { Shell } from '../components/Shell'
 import { SERVICE_TAG } from '../components/StatusBits'
 import { Button, Card, cn, Empty, ErrorBox, Spinner } from '../components/ui'
 import { timeAgo } from '../lib/format'
@@ -88,7 +89,10 @@ function fromClient(client: ClientConfig): Draft {
   const envs = Object.fromEntries(SETUP_KINDS.map((kind) => [kind, emptyEnv()]))
   for (const env of client.environments) {
     if (!SETUP_KINDS.includes(env.kind)) continue
-    const host = env.services[0] ? new URL(env.services[0].url).hostname.replace(/^[a-z]+\./, '') : ''
+    // The website has no subdomain, so its host is the site domain. Otherwise strip a
+    // known service prefix rather than the first label, which would turn asdfbet.com into com.
+    const front = env.services.find((service) => service.kind === 'front') ?? env.services[0]
+    const host = front ? new URL(front.url).hostname.replace(/^(admin|api|ws|chat|pay)\./, '') : ''
     envs[env.kind] = {
       enabled: true,
       domain: host,
@@ -113,7 +117,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 const inputClass =
-  'h-9 w-full rounded-md border border-line bg-surface px-2.5 text-sm placeholder:text-fg-3 focus:border-accent focus:outline-none'
+  'h-10 w-full rounded-lg border border-line bg-surface-2/50 px-3 text-sm placeholder:text-fg-3 focus:border-accent focus:outline-none'
 
 const TRIGGER_NOTE: Record<string, { text: string; className: string }> = {
   push: { text: 'deploys on push', className: 'text-add' },
@@ -191,8 +195,18 @@ export function WizardPage() {
     [current],
   )
 
-  if (clients.isPending || repos.isPending) return <Spinner label="Loading…" />
-  if (!current) return <Empty>That client is not in the list.</Empty>
+  if (clients.isPending || repos.isPending)
+    return (
+      <Shell title="Client setup">
+        <Spinner label="Loading…" />
+      </Shell>
+    )
+  if (!current)
+    return (
+      <Shell title="Client setup">
+        <Empty>That client is not in the list.</Empty>
+      </Shell>
+    )
 
   const update = (patch: Partial<Draft>) => setDraft({ ...current, ...patch })
   const updateEnv = (kind: EnvKind, patch: Partial<EnvDraft>) =>
@@ -206,22 +220,23 @@ export function WizardPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-4 px-4 py-5 md:px-6">
-      <header>
-        <Link to="/" className="inline-flex items-center gap-1 text-sm text-accent hover:underline">
-          <ArrowLeft className="size-4" aria-hidden /> Back to the board
-        </Link>
-        <h1 className="mt-2 text-2xl font-semibold">{editing ? `Edit ${current.name}` : 'Add a client'}</h1>
-      </header>
+    <Shell
+      title={editing ? `Edit ${current.name}` : 'Add a client'}
+      subtitle={`Step ${step + 1} of ${STEPS.length} · ${STEPS[step]}`}
+    >
+      <div className="max-w-4xl space-y-4">
+      <Link to="/" className="inline-flex items-center gap-1.5 text-[13px] text-fg-3 hover:text-fg">
+        <ArrowLeft className="size-4" aria-hidden /> Back to status
+      </Link>
 
-      <nav className="flex flex-wrap gap-1 border-b border-line pb-2 text-sm">
+      <nav className="flex flex-wrap gap-1 text-[13px]">
         {STEPS.map((name, i) => (
           <button
             key={name}
             onClick={() => setStep(i)}
             className={cn(
-              'rounded-md px-2.5 py-1',
-              i === step ? 'bg-accent-soft font-medium text-accent' : 'text-fg-2 hover:bg-surface-2',
+              'rounded-lg px-3 py-1.5 transition-colors',
+              i === step ? 'bg-accent-soft font-medium text-accent' : 'text-fg-3 hover:bg-surface-2 hover:text-fg',
             )}
           >
             {i + 1}. {name}
@@ -343,7 +358,7 @@ export function WizardPage() {
                                 },
                               })
                             }
-                            className="inline-flex items-center gap-1 rounded border border-accent bg-accent-soft px-2 py-1 font-mono text-xs text-accent"
+                            className="inline-flex items-center gap-1 rounded-md border border-accent/50 bg-accent-soft px-2 py-1 font-mono text-xs text-accent"
                           >
                             {name} <X className="size-3" />
                           </button>
@@ -360,7 +375,7 @@ export function WizardPage() {
                             },
                           })
                         }}
-                        className="mt-1.5 h-8 w-full rounded-md border border-line bg-surface px-2 text-sm"
+                        className="mt-1.5 h-9 w-full rounded-lg border border-line bg-surface-2/50 px-2.5 text-sm"
                       >
                         <option value="">Add a branch…</option>
                         {list
@@ -442,7 +457,7 @@ export function WizardPage() {
 
       {step === 5 && (
         <Card title="Ready to save" subtitle="This writes server/data/clients.json">
-          <pre className="max-h-96 overflow-auto rounded-md bg-surface-2 p-3 font-mono text-xs">
+          <pre className="max-h-96 overflow-auto rounded-lg bg-surface-2/60 p-3 font-mono text-xs">
             {JSON.stringify(toClient(current), null, 2)}
           </pre>
           {save.isError && (
@@ -485,6 +500,7 @@ export function WizardPage() {
           </Button>
         )}
       </div>
-    </div>
+      </div>
+    </Shell>
   )
 }

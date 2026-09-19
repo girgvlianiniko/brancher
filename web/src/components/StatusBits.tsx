@@ -1,8 +1,17 @@
-import type { AutoDeploy, CellStatus, Colour, ServiceKind, ServiceState } from '../../../shared/status'
-import { timeAgo } from '../lib/format'
+import type { CellStatus, Colour, ServiceKind, ServiceState } from '../../../shared/status'
+import { formatNumber } from '../lib/format'
 import { cn } from './ui'
 
-/** Green, amber, red, grey. The only four things a viewer has to tell apart. */
+/** Plain words. Nobody reading the board should need to know what "front" means. */
+export const SERVICE_TAG: Record<ServiceKind, string> = {
+  front: 'Website',
+  admin: 'Admin',
+  api: 'API',
+  ws: 'Live',
+  chat: 'Chat',
+  pay: 'Payments',
+}
+
 export const DOT: Record<Colour, string> = {
   green: 'bg-add',
   yellow: 'bg-warn',
@@ -10,96 +19,92 @@ export const DOT: Record<Colour, string> = {
   grey: 'bg-line-strong',
 }
 
-const RING: Record<Colour, string> = {
-  green: 'ring-add/25',
-  yellow: 'ring-warn/25',
-  red: 'ring-del/25',
-  grey: 'ring-line/40',
-}
-
-export const WORD_TEXT: Record<Colour, string> = {
-  green: 'text-fg',
-  yellow: 'text-fg',
+export const TEXT: Record<Colour, string> = {
+  green: 'text-add',
+  yellow: 'text-warn',
   red: 'text-del',
   grey: 'text-fg-3',
 }
 
-/** Short enough for a wall screen, and never jargon. */
-const SERVICE_TAG: Record<ServiceKind, string> = {
-  front: 'Website',
-  admin: 'Admin',
-  api: 'API',
-  ws: 'Live',
-  chat: 'Chat',
-  pay: 'Pay',
+export const SOFT: Record<Colour, string> = {
+  green: 'border-add/30 bg-add-soft/40',
+  yellow: 'border-warn/35 bg-warn-soft/40',
+  red: 'border-del/35 bg-del-soft/40',
+  grey: 'border-line bg-surface-2/40',
 }
 
-export function StatusDot({ colour, big }: { colour: Colour; big?: boolean }) {
+export function StatusDot({ colour, className }: { colour: Colour; className?: string }) {
+  return <span className={cn('inline-block size-2 shrink-0 rounded-full', DOT[colour], className)} aria-hidden />
+}
+
+/** Colour, word, and the count that explains it, on one line. */
+export function StatusLine({ cell, className }: { cell: CellStatus; className?: string }) {
+  const figure = headlineFigure(cell)
+  return (
+    <span className={cn('inline-flex min-w-0 items-center gap-2 text-[13px]', className)}>
+      <StatusDot colour={cell.colour} />
+      <span className={cn('font-semibold', TEXT[cell.colour])}>{cell.word}</span>
+      {figure && (
+        <span className="tabular truncate text-fg-3">
+          {formatNumber(figure.value)} {figure.unit}
+        </span>
+      )}
+    </span>
+  )
+}
+
+export function ServiceLine({ services, className }: { services: ServiceState[]; className?: string }) {
+  if (services.length === 0) return null
+  return (
+    <p className={cn('flex flex-wrap items-center gap-x-1.5 text-xs text-fg-3', className)}>
+      {services.map((service, i) => (
+        <span key={service.ref} className="inline-flex items-center gap-1.5">
+          {i > 0 && <span className="text-line-strong">·</span>}
+          <span
+            className={cn(service.status === 'down' && 'font-semibold text-del')}
+            title={`${service.url}${service.error ? ` — ${service.error}` : ''}`}
+          >
+            {SERVICE_TAG[service.kind]}
+          </span>
+        </span>
+      ))}
+    </p>
+  )
+}
+
+/** The count behind an amber cell, or nothing when the colour needs no number. */
+export function headlineFigure(cell: CellStatus): { value: number; unit: string } | null {
+  if (cell.colour !== 'yellow') return null
+  const waiting = cell.lag.filter((edge) => edge.overThreshold).reduce((sum, edge) => sum + edge.realCommits, 0)
+  return waiting > 0 ? { value: waiting, unit: waiting === 1 ? 'change waiting' : 'changes waiting' } : null
+}
+
+/** A stable colour per client, so the same monogram is the same hue every visit. */
+export function monogramHue(id: string): number {
+  let hash = 0
+  for (const char of id) hash = (hash * 31 + char.charCodeAt(0)) % 360
+  return hash
+}
+
+export function Monogram({ name, id, size = 'md' }: { name: string; id: string; size?: 'md' | 'lg' }) {
+  const hue = monogramHue(id)
+  // Two letters from the first word, so "Oribets.com" reads OR rather than OC.
+  const first = name.replace(/[^a-zA-Z0-9 ]/g, ' ').split(' ').filter(Boolean)[0] ?? name
+  const letters = first.slice(0, 2).toUpperCase()
   return (
     <span
       className={cn(
-        'inline-block shrink-0 rounded-full ring-4',
-        DOT[colour],
-        RING[colour],
-        big ? 'size-3.5' : 'size-2.5',
+        'grid shrink-0 place-items-center rounded-lg font-bold',
+        size === 'lg' ? 'size-12 text-base' : 'size-10 text-[13px]',
       )}
+      style={{
+        background: `oklch(0.55 0.16 ${hue} / 0.18)`,
+        color: `oklch(0.72 0.16 ${hue})`,
+        boxShadow: `inset 0 0 0 1px oklch(0.6 0.16 ${hue} / 0.3)`,
+      }}
       aria-hidden
-    />
+    >
+      {letters || '?'}
+    </span>
   )
 }
-
-export function ServiceTags({ services }: { services: ServiceState[] }) {
-  if (services.length === 0) return null
-  return (
-    <div className="mt-2 flex flex-wrap gap-1.5">
-      {services.map((service) => (
-        <span
-          key={service.ref}
-          title={`${service.url}${service.error ? ` — ${service.error}` : ''}`}
-          className={cn(
-            'rounded border px-1.5 py-0.5 text-[11px] leading-4',
-            service.status === 'down'
-              ? 'border-del/50 bg-del/10 text-del'
-              : service.status === 'unknown'
-                ? 'border-line text-fg-3'
-                : 'border-line text-fg-3',
-          )}
-        >
-          {SERVICE_TAG[service.kind]}
-        </span>
-      ))}
-    </div>
-  )
-}
-
-const AUTO_DEPLOY_NOTE: Record<AutoDeploy, string | null> = {
-  on: null,
-  off: 'Deploys by hand only',
-  mixed: 'Some parts deploy by hand',
-  unknown: null,
-}
-
-/** One environment, as it appears on the board: colour, one word, one sentence. */
-export function Cell({ cell, big }: { cell: CellStatus; big?: boolean }) {
-  const note = AUTO_DEPLOY_NOTE[cell.autoDeploy]
-  return (
-    <div className="flex min-w-0 items-start gap-3">
-      <span className={cn('flex shrink-0', big ? 'mt-2' : 'mt-1.5')}>
-        <StatusDot colour={cell.colour} big={big} />
-      </span>
-      <div className="min-w-0">
-        <div className={cn('font-semibold', WORD_TEXT[cell.colour], big ? 'text-lg' : 'text-sm')}>{cell.word}</div>
-        <div className={cn('text-fg-2', big ? 'text-sm' : 'text-xs')}>{cell.sentence}</div>
-        {cell.lastDeployedAt && (
-          <div className={cn('text-fg-3', big ? 'text-sm' : 'text-xs')}>
-            Last change {timeAgo(cell.lastDeployedAt)}
-          </div>
-        )}
-        {note && <div className="mt-0.5 text-[11px] text-fg-3 italic">{note}</div>}
-        <ServiceTags services={cell.services} />
-      </div>
-    </div>
-  )
-}
-
-export { SERVICE_TAG }
