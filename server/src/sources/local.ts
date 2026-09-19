@@ -381,26 +381,39 @@ export class LocalSource implements GitSource {
   }
 
   async branchOverview(name: string): Promise<BranchOverview> {
-    if (!(await this.refExists(name))) throw badRequest(`Unknown branch: ${name}`)
-    const defaultBranch = await this.defaultBranch()
     const remotes = (await this.remotes()).map((remote) => remote.name)
+    // Most branches in a working clone exist only as remote-tracking refs, and the
+    // remote one is the current copy anyway, so it wins over a local branch of the same
+    // name. Callers pass the plain name they saw on screen.
+    const ref = await this.resolveBranchRef(name, remotes)
+    if (!ref) throw badRequest(`Unknown branch: ${name}`)
+    const defaultBranch = await this.defaultBranch()
+    // The upstream only exists for a local branch, so look it up under its short name.
+    const localName = remotes.reduce(
+      (value, remote) => (value.startsWith(`${remote}/`) ? value.slice(remote.length + 1) : value),
+      name,
+    )
 
     const [tipOutput, commitCount, shortlog, activityOutput, recentOutput, refInfo, counts, shortstat] =
       await Promise.all([
-        this.run(['log', '-1', `--format=${COMMIT_FORMAT}`, name], { allowFail: true }),
-        this.run(['rev-list', '--count', name], { allowFail: true }),
-        this.run(['shortlog', '-sne', name], { allowFail: true }),
-        this.run(['log', `--since=${activitySince()}`, '--format=%aI', name], { allowFail: true }),
-        this.run(['log', '--max-count=25', `--format=${COMMIT_FORMAT}`, name], { allowFail: true }),
+        this.run(['log', '-1', `--format=${COMMIT_FORMAT}`, ref], { allowFail: true }),
+        this.run(['rev-list', '--count', ref], { allowFail: true }),
+        this.run(['shortlog', '-sne', ref], { allowFail: true }),
+        this.run(['log', `--since=${activitySince()}`, '--format=%aI', ref], { allowFail: true }),
+        this.run(['log', '--max-count=25', `--format=${COMMIT_FORMAT}`, ref], { allowFail: true }),
         this.run(
-          ['for-each-ref', `--format=%(upstream:short)%1f%(upstream:track,nobracket)`, `refs/heads/${name}`],
+          [
+            'for-each-ref',
+            `--format=%(upstream:short)%1f%(upstream:track,nobracket)`,
+            `refs/heads/${localName}`,
+          ],
           { allowFail: true },
         ),
         defaultBranch
-          ? this.run(['rev-list', '--left-right', '--count', `${defaultBranch}...${name}`], { allowFail: true })
+          ? this.run(['rev-list', '--left-right', '--count', `${defaultBranch}...${ref}`], { allowFail: true })
           : Promise.resolve(''),
         defaultBranch
-          ? this.run(['diff', '--shortstat', `${defaultBranch}...${name}`], { allowFail: true })
+          ? this.run(['diff', '--shortstat', `${defaultBranch}...${ref}`], { allowFail: true })
           : Promise.resolve(''),
       ])
 
@@ -428,6 +441,15 @@ export class LocalSource implements GitSource {
       activity: bucketByWeek(activityOutput.split('\n').filter(Boolean)),
       recent: parseCommits(recentOutput, remotes),
     }
+  }
+
+  /** `origin/<name>` when it exists, else the plain name. */
+  private async resolveBranchRef(name: string, remotes: string[]): Promise<string | null> {
+    const candidates = [...remotes.map((remote) => `${remote}/${name}`), name]
+    for (const candidate of candidates) {
+      if (await this.refExists(candidate)) return candidate
+    }
+    return null
   }
 
   async fetch(): Promise<void> {
