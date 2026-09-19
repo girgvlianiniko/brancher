@@ -64,10 +64,25 @@ clones everything named in `BRANCHER_CLONE`, and starts watching.
 | `BRANCHER_DATA_DIR` | Where config and history are written. `/data` in the container. |
 | `BRANCHER_REPOS_DIR` | Where clones live. `/repos` in the container. |
 | `BRANCHER_HOST` | Interface to bind. `0.0.0.0` in the container, loopback otherwise. |
+| `BRANCHER_PUBLIC_URL` | Where the board lives, so alerts can link back to it. |
 
 Clones are blobless (`--filter=blob:none`): the full history and every ref, without every
 version of every file. That is everything the board counts and compares, at a fraction of
 the disk and the first-clone wait.
+
+## Alerts
+
+Add a destination under Alerts and Brancher tells it when something changes. Slack,
+Telegram and Discord are built in, plus your own endpoint and anything an
+[Apprise](https://github.com/caronc/apprise) container can reach.
+
+Each destination carries its own rule: which severities are worth a message, whether
+recovery is worth one too, which clients and environments to watch, and how long to wait
+first. That wait matters. The board checks every thirty seconds, so without it a single
+slow response would page somebody at 3am for something that fixed itself before they
+read the message. Anything that recovers inside the window is never sent at all.
+
+Quiet hours hold back everything except a site that is actually down.
 
 ### Before it faces the internet
 

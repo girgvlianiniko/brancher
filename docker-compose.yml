@@ -12,6 +12,8 @@ services:
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       # Cloned on first boot if they are not on the volume yet. Comma separated.
       BRANCHER_CLONE: ${BRANCHER_CLONE:-}
+      # Alerts link back to the board, so it needs to know its own address.
+      BRANCHER_PUBLIC_URL: ${BRANCHER_PUBLIC_URL:-}
       TZ: ${TZ:-Europe/Tbilisi}
     volumes:
       # Client config, the repo list and the status history.

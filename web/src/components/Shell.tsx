@@ -1,4 +1,4 @@
-import { GitBranch, LayoutGrid, Moon, RefreshCw, Settings, Sun } from 'lucide-react'
+import { Bell, GitBranch, LayoutGrid, Moon, RefreshCw, Settings, Sun } from 'lucide-react'
 import { type ReactNode, useEffect, useState } from 'react'
 import { NavLink, useLocation } from 'react-router'
 
@@ -68,6 +68,7 @@ const worst = (colours: Colour[]): Colour =>
 const NAV = [
   { to: '/', label: 'Status', icon: LayoutGrid, match: (p: string) => p === '/' || p.startsWith('/c/') },
   { to: '/r', label: 'Repositories', icon: GitBranch, match: (p: string) => p.startsWith('/r') },
+  { to: '/alerts', label: 'Alerts', icon: Bell, match: (p: string) => p.startsWith('/alerts') },
   { to: '/settings', label: 'Settings', icon: Settings, match: (p: string) => p.startsWith('/settings') },
 ]
 

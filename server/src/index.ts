@@ -9,9 +9,12 @@ import { Hono } from 'hono'
 import type { ContentfulStatusCode } from 'hono/utils/http-status'
 
 import type { AddRepoInput, GraphScope, HealthResponse, SettingsResponse } from '../../shared/types'
+import type { AlertsResponse } from '../../shared/status'
 import { invalidate } from './cache'
 import { assertRef, badRequest, HttpError } from './errors'
 import { GitCommandError } from './git/exec'
+import { getChannels, parseChannel, publicUrl, removeChannel, upsertChannel } from './alerts/config'
+import { recentDeliveries, sendTest } from './alerts/dispatch'
 import { cloneFromEnvironment, cloneRepo, useGitCredentials } from './clone'
 import { checkToken, listGitHubRepos } from './github'
 import { WEB_DIR } from './paths'
@@ -28,6 +31,36 @@ const api = new Hono()
 api.get('/health', (c) => c.json({ ok: true, githubToken: Boolean(process.env.GITHUB_TOKEN?.trim()) } satisfies HealthResponse))
 
 api.get('/repos', (c) => c.json(listRepos()))
+
+api.get('/alerts', (c) =>
+  c.json({
+    channels: getChannels(),
+    publicUrl: publicUrl(),
+    recent: recentDeliveries(),
+  } satisfies AlertsResponse),
+)
+
+api.put('/alerts/channels/:id', async (c) => {
+  const body = (await c.req.json().catch(() => null)) as unknown
+  const channel = parseChannel({ ...(body as object), id: c.req.param('id') })
+  return c.json(upsertChannel(channel))
+})
+
+api.post('/alerts/channels', async (c) => {
+  const body = (await c.req.json().catch(() => null)) as unknown
+  return c.json(upsertChannel(parseChannel(body)), 201)
+})
+
+api.delete('/alerts/channels/:id', (c) => {
+  removeChannel(c.req.param('id'))
+  return c.body(null, 204)
+})
+
+api.post('/alerts/test', async (c) => {
+  const body = (await c.req.json().catch(() => null)) as unknown
+  await sendTest(parseChannel(body))
+  return c.json({ ok: true })
+})
 
 api.get('/settings', (c) =>
   c.json({ github: { source: tokenSource(), hint: tokenHint() } } satisfies SettingsResponse),

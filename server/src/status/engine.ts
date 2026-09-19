@@ -32,6 +32,7 @@ import {
   saveServiceState,
   uptimeFor,
 } from './store'
+import { flush, queueChange } from '../alerts/dispatch'
 import { readTriggers } from './triggers'
 
 /** Branch tips per repo id, refreshed after every fetch. */
@@ -226,6 +227,7 @@ function rebuild(): BoardResponse {
         at,
       }
       recordChange(change)
+      queueChange(change)
     }
   }
 
@@ -501,6 +503,8 @@ export function startEngine() {
     'fetch',
   )
   loop(config.probe.intervalSec * 1000, runProbes, 'probe')
+  // Alerts go out on their own beat, so a slow send cannot stall the checks.
+  loop(30_000, () => flush((ref) => lastColour.get(ref)), 'alerts')
   loop(24 * 3600_000, async () => pruneOldSamples(), 'prune')
 
   console.log(

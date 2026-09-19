@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router'
 
+import { AlertsPage } from './pages/AlertsPage'
 import { BoardPage } from './pages/BoardPage'
 import { ClientPage } from './pages/ClientPage'
 import { RepoPage } from './pages/RepoPage'
@@ -16,6 +17,7 @@ export function App() {
       <Route path="/c/:clientId/setup" element={<WizardPage />} />
       <Route path="/c/:clientId" element={<ClientPage />} />
       <Route path="/r" element={<ReposPage />} />
+      <Route path="/alerts" element={<AlertsPage />} />
       <Route path="/settings" element={<SettingsPage />} />
       <Route path="/r/:repoId/:tab?" element={<RepoPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />

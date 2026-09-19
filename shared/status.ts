@@ -232,3 +232,52 @@ export interface ProbeResult {
   latencyMs: number
   error: string | null
 }
+
+// ---------------------------------------------------------------- alerts
+
+export type ChannelKind = 'slack' | 'telegram' | 'discord' | 'webhook' | 'apprise'
+
+export const CHANNEL_KINDS: ChannelKind[] = ['slack', 'telegram', 'discord', 'webhook', 'apprise']
+
+/**
+ * One destination and the rule for what reaches it. Keeping them together means adding a
+ * second Slack channel with a different filter is just another entry, rather than a
+ * separate concept to learn.
+ */
+export interface AlertChannel {
+  id: string
+  kind: ChannelKind
+  label: string
+  enabled: boolean
+  /** Per kind: `url` for slack, discord, webhook and apprise; `token` and `chat` for telegram. */
+  config: Record<string, string>
+  /** Colours whose arrival is worth a message. */
+  notifyOn: Colour[]
+  /** Also say when something goes back to green. */
+  notifyRecovery: boolean
+  /** Client ids to watch; empty means all of them. */
+  clients: string[]
+  /** Environments to watch; empty means all of them. */
+  environments: EnvKind[]
+  /** Hold a change this long before sending, so a blip does not wake anyone. */
+  holdMinutes: number
+  /** Local hours to stay quiet between, e.g. 22 to 8. Red still gets through. */
+  quietHours: { from: number; to: number } | null
+}
+
+export interface AlertDelivery {
+  at: string
+  channelId: string
+  channelLabel: string
+  cellRef: string
+  summary: string
+  ok: boolean
+  error: string | null
+}
+
+export interface AlertsResponse {
+  channels: AlertChannel[]
+  /** Set from the environment; alerts link back here. */
+  publicUrl: string | null
+  recent: AlertDelivery[]
+}

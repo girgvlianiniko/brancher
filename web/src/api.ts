@@ -1,6 +1,8 @@
 import { keepPreviousData, QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import type {
+  AlertChannel,
+  AlertsResponse,
   BoardResponse,
   ClientConfig,
   ClientDetail,
@@ -261,5 +263,39 @@ export function useCloneRepo() {
       queryClient.invalidateQueries({ queryKey: ['repos'] })
       return queryClient.invalidateQueries({ queryKey: ['github'] })
     },
+  })
+}
+
+// ---------------------------------------------------------------- alerts
+
+export const useAlerts = () =>
+  useQuery({ queryKey: ['alerts'], queryFn: () => request<AlertsResponse>('/alerts'), refetchInterval: 30_000 })
+
+export function useSaveChannel() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (channel: AlertChannel) =>
+      channel.id
+        ? request<AlertChannel>(`/alerts/channels/${channel.id}`, {
+            method: 'PUT',
+            body: JSON.stringify(channel),
+          })
+        : request<AlertChannel>('/alerts/channels', { method: 'POST', body: JSON.stringify(channel) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['alerts'] }),
+  })
+}
+
+export function useDeleteChannel() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => request<void>(`/alerts/channels/${id}`, { method: 'DELETE' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['alerts'] }),
+  })
+}
+
+export function useTestChannel() {
+  return useMutation({
+    mutationFn: (channel: AlertChannel) =>
+      request<{ ok: true }>('/alerts/test', { method: 'POST', body: JSON.stringify(channel) }),
   })
 }
