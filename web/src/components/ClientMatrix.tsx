@@ -177,7 +177,7 @@ export function ClientMatrixCard({
         ) : (
           <span className="-ml-1 w-4 shrink-0" aria-hidden />
         )}
-        <Monogram name={row.name} id={row.id} />
+        <Monogram name={row.name} id={row.id} src={row.iconUrl} />
         <div className="min-w-0 flex-1">
           <Link draggable={false} to={`/c/${row.id}`} className="block truncate text-[15px] font-bold hover:text-accent">
             {row.name}

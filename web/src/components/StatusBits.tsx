@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 import type { CellStatus, Colour, ServiceKind, ServiceState } from '../../../shared/status'
 import { formatNumber } from '../lib/format'
 import { cn } from './ui'
@@ -86,17 +88,44 @@ export function monogramHue(id: string): number {
   return hash
 }
 
-export function Monogram({ name, id, size = 'md' }: { name: string; id: string; size?: 'md' | 'lg' }) {
+export function Monogram({
+  name,
+  id,
+  src,
+  size = 'md',
+}: {
+  name: string
+  id: string
+  /** The client's own favicon. Falls back to initials when it is missing or broken. */
+  src?: string | null
+  size?: 'md' | 'lg'
+}) {
+  const [failed, setFailed] = useState(false)
   const hue = monogramHue(id)
   // Two letters from the first word, so "Oribets.com" reads OR rather than OC.
   const first = name.replace(/[^a-zA-Z0-9 ]/g, ' ').split(' ').filter(Boolean)[0] ?? name
   const letters = first.slice(0, 2).toUpperCase()
+  const box = size === 'lg' ? 'size-12' : 'size-10'
+
+  if (src && !failed) {
+    return (
+      <span
+        className={cn('grid shrink-0 place-items-center overflow-hidden rounded-lg bg-surface-2', box)}
+      >
+        <img
+          src={src}
+          alt=""
+          loading="lazy"
+          onError={() => setFailed(true)}
+          className={cn('object-contain', size === 'lg' ? 'size-8' : 'size-6')}
+        />
+      </span>
+    )
+  }
+
   return (
     <span
-      className={cn(
-        'grid shrink-0 place-items-center rounded-lg font-bold',
-        size === 'lg' ? 'size-12 text-base' : 'size-10 text-[13px]',
-      )}
+      className={cn('grid shrink-0 place-items-center rounded-lg font-bold', box, size === 'lg' ? 'text-base' : 'text-[13px]')}
       style={{
         background: `oklch(0.55 0.16 ${hue} / 0.18)`,
         color: `oklch(0.72 0.16 ${hue})`,

@@ -121,8 +121,7 @@
             {
               "repoId": "api-laravel",
               "branches": [
-                "global_staging",
-                "dev_korean"
+                "global_staging"
               ]
             }
           ]
@@ -228,14 +227,14 @@
             {
               "repoId": "oribet-admin",
               "branches": [
+                "global_develop",
                 "dev_turkey"
               ]
             },
             {
               "repoId": "api-laravel",
               "branches": [
-                "global_staging",
-                "dev_turkey"
+                "global_staging"
               ]
             }
           ]
@@ -369,13 +368,14 @@
             {
               "repoId": "oribet-admin",
               "branches": [
+                "global_develop",
                 "main"
               ]
             },
             {
               "repoId": "api-laravel",
               "branches": [
-                "main"
+                "global_staging"
               ]
             }
           ]

@@ -94,7 +94,16 @@ function tipsFor(env: EnvironmentConfig): BranchTip[] {
         date: tip?.date ?? null,
       }
     })
-    const newest = rows.filter((row) => row.date).sort((a, b) => (a.date ?? '').localeCompare(b.date ?? '')).pop()
+    // What is live is the newest branch that something actually deploys. Falling back to
+    // plain recency would let a stale branch nobody deploys stand in for the environment,
+    // which reads as a huge backlog that is not really there.
+    const deploying = rows.filter(
+      (row) =>
+        row.date &&
+        triggersByRepo.get(binding.repoId)?.some((t) => t.branch === row.branch && t.mode === 'push'),
+    )
+    const pool = deploying.length > 0 ? deploying : rows.filter((row) => row.date)
+    const newest = pool.sort((a, b) => (a.date ?? '').localeCompare(b.date ?? '')).pop()
     if (newest) newest.isPrimary = true
     else if (rows[0]) rows[0].isPrimary = true
     tips.push(...rows)
@@ -158,6 +167,25 @@ function buildCell(row: Row, env: EnvironmentConfig): CellStatus {
   }
 }
 
+/** The address whose favicon stands for this client: its website, else whatever it has. */
+function siteUrlOf(row: Row): string | null {
+  const envs = [...row.environments].sort(
+    (a, b) => ENV_KINDS.indexOf(a.kind) - ENV_KINDS.indexOf(b.kind),
+  )
+  for (const kind of ['front', 'pay', 'admin'] as const) {
+    for (const env of envs) {
+      const service = env.services.find((candidate) => candidate.kind === kind && candidate.enabled)
+      if (service) return service.url
+    }
+  }
+  return null
+}
+
+export const siteUrlFor = (id: string) => {
+  const row = getRows().find((candidate) => candidate.id === id)
+  return row ? siteUrlOf(row) : null
+}
+
 function buildRow(row: Row): BoardRow {
   return {
     id: row.id,
@@ -165,6 +193,7 @@ function buildRow(row: Row): BoardRow {
     region: row.region,
     kind: row.kind,
     pinned: row.pinned,
+    iconUrl: siteUrlOf(row) ? `/api/clients/${row.id}/icon` : null,
     cells: ENV_KINDS.map((kind) => {
       const env = row.environments.find((candidate) => candidate.kind === kind)
       return env ? buildCell(row, env) : null
@@ -446,7 +475,8 @@ function loop(everyMs: number, job: () => Promise<void>, label: string) {
 /** Reads git and probes once, without waiting for the next tick. */
 export async function refreshNow() {
   await refreshTips()
-  await Promise.all([refreshLag(), refreshTriggers()])
+  await refreshTriggers()
+  await refreshLag()
   await runProbes()
 }
 
@@ -463,7 +493,8 @@ export function startEngine() {
     async () => {
       await fetchRepos()
       await refreshTips()
-      await Promise.all([refreshLag(), refreshTriggers()])
+      await refreshTriggers()
+      await refreshLag()
     },
     'fetch',
   )

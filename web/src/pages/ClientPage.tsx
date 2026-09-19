@@ -150,7 +150,7 @@ export function ClientPage() {
     <Shell
       title={
         <span className="flex items-center gap-3">
-          <Monogram name={row.name} id={row.id} />
+          <Monogram name={row.name} id={row.id} src={row.iconUrl} />
           {row.name}
         </span>
       }

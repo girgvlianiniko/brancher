@@ -172,6 +172,8 @@ export interface BoardRow {
   region: string
   kind: 'client' | 'shared'
   pinned: boolean
+  /** Where the board serves this client's favicon from, or `null` when it has no site. */
+  iconUrl: string | null
   /** Aligned with `BoardResponse.columns`; `null` where the client has no such environment. */
   cells: (CellStatus | null)[]
 }

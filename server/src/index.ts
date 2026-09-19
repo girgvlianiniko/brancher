@@ -10,7 +10,8 @@ import { assertRef, badRequest, HttpError } from './errors'
 import { GitCommandError } from './git/exec'
 import { addRepo, getRepo, listRepos, removeRepo } from './repos'
 import { sourceFor } from './sources'
-import { getBoard, getClientDetail, getRecentChanges, refreshNow, startEngine } from './status/engine'
+import { getBoard, getClientDetail, getRecentChanges, refreshNow, siteUrlFor, startEngine } from './status/engine'
+import { resolveIcon } from './status/icon'
 import { getConfig, parseClient, removeClient, setLayout, upsertClient } from './status/config'
 import { discoverBranches, discoverTriggers, probeUrl, suggestServices } from './status/discover'
 
@@ -61,6 +62,16 @@ app.get('/discover/services', (c) => c.json(suggestServices(c.req.query('domain'
 app.post('/discover/probe', async (c) => {
   const body = (await c.req.json().catch(() => null)) as { url?: string } | null
   return c.json(await probeUrl(body?.url ?? ''))
+})
+
+app.get('/clients/:id/icon', async (c) => {
+  const site = siteUrlFor(c.req.param('id'))
+  const icon = site ? await resolveIcon(site) : null
+  if (!icon) return c.body(null, 404)
+  return c.body(icon.body as unknown as ArrayBuffer, 200, {
+    'Content-Type': icon.contentType,
+    'Cache-Control': 'public, max-age=86400',
+  })
 })
 
 app.get('/clients/:id', (c) => {
