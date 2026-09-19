@@ -1,4 +1,4 @@
-import { AlertTriangle, Boxes, CheckCircle2, Plus, Search, XCircle } from 'lucide-react'
+import { AlertTriangle, Boxes, CheckCircle2, ChevronRight, Plus, Search, XCircle } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 
@@ -11,6 +11,77 @@ import { Button, cn, ErrorBox, Spinner } from '../components/ui'
 import { percent, timeAgo } from '../lib/format'
 
 type Filter = 'all' | 'attention' | 'working' | 'down'
+
+const OPEN_KEY = 'brancher.sections'
+
+function readOpen(label: string): boolean {
+  try {
+    const closed = JSON.parse(localStorage.getItem(OPEN_KEY) ?? '[]') as unknown
+    return !(Array.isArray(closed) && closed.includes(label))
+  } catch {
+    return true
+  }
+}
+
+function rememberOpen(label: string, open: boolean) {
+  try {
+    const closed = new Set(JSON.parse(localStorage.getItem(OPEN_KEY) ?? '[]') as string[])
+    if (open) closed.delete(label)
+    else closed.add(label)
+    localStorage.setItem(OPEN_KEY, JSON.stringify([...closed]))
+  } catch {
+    // Storage unavailable — the choice just will not survive a reload.
+  }
+}
+
+/** A board section that folds away, and stays folded next time. */
+function Section({
+  label,
+  count,
+  note,
+  kiosk,
+  children,
+}: {
+  label: string
+  count: number
+  note?: string
+  kiosk: boolean
+  children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(() => kiosk || readOpen(label))
+
+  return (
+    <details
+      open={open}
+      onToggle={(event) => {
+        // A wall screen has nobody to unfold it again, so it always stays open.
+        if (kiosk) return
+        const next = event.currentTarget.open
+        setOpen(next)
+        rememberOpen(label, next)
+      }}
+      className="group mb-7 last:mb-0"
+    >
+      <summary
+        className={cn(
+          'mb-3 flex list-none flex-wrap items-center gap-2 text-[11px] font-semibold tracking-wider text-fg-3 uppercase',
+          kiosk ? 'cursor-default' : 'cursor-pointer hover:text-fg',
+        )}
+      >
+        {!kiosk && (
+          <ChevronRight
+            className="size-3.5 shrink-0 transition-transform group-open:rotate-90"
+            aria-hidden
+          />
+        )}
+        {label}
+        <span className="rounded bg-surface-2 px-1.5 py-0.5 text-[10px] text-fg-3">{count}</span>
+        {note && <span className="font-normal tracking-normal normal-case text-fg-3/70">{note}</span>}
+      </summary>
+      {children}
+    </details>
+  )
+}
 
 export function BoardPage() {
   const [params] = useSearchParams()
@@ -139,34 +210,18 @@ export function BoardPage() {
     </div>
   )
 
-  const heading = (label: string, count: number, note?: string) => (
-    <h2 className="mb-3 flex flex-wrap items-center gap-2 text-[11px] font-semibold tracking-wider text-fg-3 uppercase">
-      {label}
-      <span className="rounded bg-surface-2 px-1.5 py-0.5 text-[10px] text-fg-3">{count}</span>
-      {note && <span className="font-normal tracking-normal normal-case text-fg-3/70">{note}</span>}
-    </h2>
+  const group = (label: string, count: number, note: string | undefined, rows: BoardRow[]) => (
+    <Section key={label} label={label} count={count} note={note} kiosk={kiosk}>
+      {section(rows)}
+    </Section>
   )
 
   const body = (
     <>
-      {shared.length > 0 && (
-        <section className="mb-7">
-          {heading('Shared services', shared.length, 'Used by every client')}
-          {section(shared)}
-        </section>
-      )}
-      {pinned.length > 0 && (
-        <section className="mb-7">
-          {heading('Pinned', pinned.length)}
-          {section(pinned)}
-        </section>
-      )}
-      {rest.length > 0 && (
-        <section>
-          {heading(pinned.length > 0 ? 'Everyone else' : 'Clients', rest.length)}
-          {section(rest)}
-        </section>
-      )}
+      {shared.length > 0 && group('Shared services', shared.length, 'Used by every client', shared)}
+      {pinned.length > 0 && group('Pinned', pinned.length, undefined, pinned)}
+      {rest.length > 0 &&
+        group(pinned.length > 0 ? 'Everyone else' : 'Clients', rest.length, undefined, rest)}
       {visible.length === 0 && <p className="py-12 text-center text-sm text-fg-3">No clients match.</p>}
     </>
   )
