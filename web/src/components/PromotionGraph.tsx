@@ -15,6 +15,7 @@ interface Edge {
   to: EnvKind
   count: number
   over: boolean
+  far: boolean
   oldest: string | null
   fromRef: string
   toRef: string
@@ -37,6 +38,7 @@ function nodeState(cell: CellStatus | null, role: ServiceKind | null, incoming: 
   if (!cell) return { colour: 'grey', word: 'Source' }
   const service = role ? cell.services.find((s) => s.kind === role) : undefined
   if (service?.status === 'down') return { colour: 'red', word: 'Down' }
+  if (incoming.some((edge) => edge.far)) return { colour: 'alert', word: 'Far behind' }
   if (incoming.some((edge) => edge.over)) return { colour: 'yellow', word: 'Behind' }
   if (service?.status === 'unknown') return { colour: 'grey', word: 'Checking' }
   return { colour: 'green', word: 'Working' }
@@ -52,6 +54,7 @@ function buildEdges(cells: CellStatus[], repoId: string): Edge[] {
         to: lag.toEnv,
         count: lag.realCommits,
         over: lag.overThreshold,
+        far: lag.farBehind,
         oldest: lag.oldestWaitingAt,
         fromRef: lag.fromRef || lag.fromBranch,
         toRef: lag.toRef || lag.toBranch,
@@ -144,10 +147,26 @@ export function PromotionGraph({
                 key={`${edge.from}-${edge.to}`}
                 d={`M${x1} ${y1}C${mid} ${y1} ${mid} ${y2} ${x2 - 6} ${y2}`}
                 fill="none"
-                strokeWidth={2}
-                stroke={edge.over ? 'var(--warn)' : edge.count > 0 ? 'var(--line-strong)' : 'var(--add)'}
+                stroke={
+                  edge.far
+                    ? 'var(--alert)'
+                    : edge.over
+                      ? 'var(--warn)'
+                      : edge.count > 0
+                        ? 'var(--line-strong)'
+                        : 'var(--add)'
+                }
                 strokeOpacity={edge.count > 0 ? 1 : 0.55}
-                markerEnd={edge.over ? 'url(#arrow-warn)' : edge.count > 0 ? 'url(#arrow-plain)' : 'url(#arrow-ok)'}
+                strokeWidth={edge.far ? 2.5 : 2}
+                markerEnd={
+                  edge.far
+                    ? 'url(#arrow-alert)'
+                    : edge.over
+                      ? 'url(#arrow-warn)'
+                      : edge.count > 0
+                        ? 'url(#arrow-plain)'
+                        : 'url(#arrow-ok)'
+                }
               />
             )
           })}
@@ -155,6 +174,7 @@ export function PromotionGraph({
             {[
               ['arrow-plain', 'var(--line-strong)'],
               ['arrow-warn', 'var(--warn)'],
+              ['arrow-alert', 'var(--alert)'],
               ['arrow-ok', 'var(--add)'],
             ].map(([id, fill]) => (
               <marker key={id} id={id} viewBox="0 0 8 8" refX="6" refY="4" markerWidth="6" markerHeight="6" orient="auto">
@@ -180,7 +200,12 @@ export function PromotionGraph({
               className="flex flex-col items-center leading-tight hover:underline"
               title={`${edge.count} changes waiting to reach ${edge.to}`}
             >
-              <span className={cn('tabular text-sm font-bold', edge.over ? 'text-warn' : 'text-fg')}>
+              <span
+                className={cn(
+                  'tabular text-sm font-bold',
+                  edge.far ? 'text-alert' : edge.over ? 'text-warn' : 'text-fg',
+                )}
+              >
                 {formatNumber(edge.count)}
               </span>
               <span className="text-[10px] text-fg-3">
@@ -208,11 +233,13 @@ export function PromotionGraph({
               key={node.kind}
               className={cn(
                 'absolute flex flex-col justify-center rounded-lg border px-3',
-                state.colour === 'yellow'
-                  ? 'border-warn/35 bg-warn-soft/25'
-                  : state.colour === 'red'
-                    ? 'border-del/40 bg-del-soft/25'
-                    : 'border-line bg-surface-2/40',
+                state.colour === 'alert'
+                  ? 'border-alert/45 bg-alert-soft/30'
+                  : state.colour === 'yellow'
+                    ? 'border-warn/35 bg-warn-soft/25'
+                    : state.colour === 'red'
+                      ? 'border-del/40 bg-del-soft/25'
+                      : 'border-line bg-surface-2/40',
               )}
               style={{ left: x(node.col), top: y(node.row), width: NODE_W, height: NODE_H }}
             >

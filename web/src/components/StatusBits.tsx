@@ -17,6 +17,7 @@ export const SERVICE_TAG: Record<ServiceKind, string> = {
 export const DOT: Record<Colour, string> = {
   green: 'bg-add',
   yellow: 'bg-warn',
+  alert: 'bg-alert',
   red: 'bg-del',
   grey: 'bg-line-strong',
 }
@@ -24,6 +25,7 @@ export const DOT: Record<Colour, string> = {
 export const TEXT: Record<Colour, string> = {
   green: 'text-add',
   yellow: 'text-warn',
+  alert: 'text-alert',
   red: 'text-del',
   grey: 'text-fg-3',
 }
@@ -31,6 +33,7 @@ export const TEXT: Record<Colour, string> = {
 export const SOFT: Record<Colour, string> = {
   green: 'border-add/30 bg-add-soft/40',
   yellow: 'border-warn/35 bg-warn-soft/40',
+  alert: 'border-alert/40 bg-alert-soft/40',
   red: 'border-del/35 bg-del-soft/40',
   grey: 'border-line bg-surface-2/40',
 }

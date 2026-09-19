@@ -8,7 +8,11 @@
 
 export type EnvKind = 'development' | 'staging' | 'production' | 'mirror'
 export type ServiceKind = 'front' | 'admin' | 'api' | 'ws' | 'chat' | 'pay'
-export type Colour = 'green' | 'yellow' | 'red' | 'grey'
+/**
+ * `alert` sits between amber and red: a backlog big enough to need a decision, but not an
+ * outage. Keeping it distinct means red always and only means something is not answering.
+ */
+export type Colour = 'green' | 'yellow' | 'alert' | 'red' | 'grey'
 export type ServiceStatus = 'up' | 'down' | 'unknown'
 /** Whether a push to the environment's branch actually triggers a deploy. */
 export type AutoDeploy = 'on' | 'off' | 'mixed' | 'unknown'
@@ -23,6 +27,8 @@ export interface Thresholds {
   commits: number
   /** Age in days of the oldest waiting commit before a cell turns yellow. */
   days: number
+  /** Changes waiting on a single step before it stops being merely amber. */
+  far: number
 }
 
 export interface ProbeSettings {
@@ -124,6 +130,8 @@ export interface LagEdge {
   oldestWaitingAt: string | null
   /** True when this edge alone is enough to turn the cell yellow. */
   overThreshold: boolean
+  /** Past the `far` threshold: a backlog worth a decision rather than a nudge. */
+  farBehind: boolean
   error: string | null
 }
 

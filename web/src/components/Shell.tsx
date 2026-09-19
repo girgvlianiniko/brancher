@@ -49,12 +49,21 @@ function ThemeToggle() {
 const MARK: Record<Colour, string> = {
   green: 'bg-add',
   yellow: 'bg-warn',
+  alert: 'bg-alert',
   red: 'bg-del',
   grey: 'bg-line-strong',
 }
 
 const worst = (colours: Colour[]): Colour =>
-  colours.includes('red') ? 'red' : colours.includes('yellow') ? 'yellow' : colours.includes('green') ? 'green' : 'grey'
+  colours.includes('red')
+    ? 'red'
+    : colours.includes('alert')
+      ? 'alert'
+      : colours.includes('yellow')
+        ? 'yellow'
+        : colours.includes('green')
+          ? 'green'
+          : 'grey'
 
 const NAV = [
   { to: '/', label: 'Status', icon: LayoutGrid, match: (p: string) => p === '/' || p.startsWith('/c/') },

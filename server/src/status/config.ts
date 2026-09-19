@@ -18,7 +18,7 @@ import { PROJECT_ROOT } from '../repos'
 
 const CONFIG_FILE = path.join(PROJECT_ROOT, 'server', 'data', 'clients.json')
 
-const DEFAULT_THRESHOLDS: Thresholds = { commits: 10, days: 7 }
+const DEFAULT_THRESHOLDS: Thresholds = { commits: 10, days: 7, far: 100 }
 const DEFAULT_PROBE: ProbeSettings = {
   intervalSec: 30,
   timeoutMs: 5000,
@@ -174,6 +174,7 @@ export function parseClient(raw: unknown, at: string): ClientConfig {
           thresholds: {
             commits: count(thresholds.commits, `${at}.thresholds.commits`, DEFAULT_THRESHOLDS.commits),
             days: count(thresholds.days, `${at}.thresholds.days`, DEFAULT_THRESHOLDS.days),
+            far: count(thresholds.far, `${at}.thresholds.far`, DEFAULT_THRESHOLDS.far),
           },
         }
       : {}),
@@ -204,6 +205,7 @@ export function parseConfig(raw: unknown): BoardConfig {
     thresholds: {
       commits: count(thresholds.commits, 'config.thresholds.commits', DEFAULT_THRESHOLDS.commits),
       days: count(thresholds.days, 'config.thresholds.days', DEFAULT_THRESHOLDS.days),
+      far: count(thresholds.far, 'config.thresholds.far', DEFAULT_THRESHOLDS.far),
     },
     probe: {
       intervalSec: Math.max(5, count(probe.intervalSec, 'config.probe.intervalSec', DEFAULT_PROBE.intervalSec)),

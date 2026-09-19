@@ -536,8 +536,23 @@
       "region": "Platform",
       "environments": [
         {
-          "kind": "staging",
-          "label": "Staging",
+          "kind": "development",
+          "label": "Development",
+          "feedsFrom": null,
+          "services": [],
+          "repos": [
+            {
+              "repoId": "agentpay",
+              "branches": [
+                "develop"
+              ],
+              "role": "pay"
+            }
+          ]
+        },
+        {
+          "kind": "production",
+          "label": "Live",
           "feedsFrom": "development",
           "services": [
             {
@@ -550,28 +565,9 @@
             {
               "repoId": "agentpay",
               "branches": [
-                "develop"
-              ]
-            }
-          ]
-        },
-        {
-          "kind": "production",
-          "label": "Production",
-          "feedsFrom": "staging",
-          "services": [
-            {
-              "kind": "pay",
-              "url": "https://pay.asdfbet.com/",
-              "enabled": false
-            }
-          ],
-          "repos": [
-            {
-              "repoId": "agentpay",
-              "branches": [
                 "main"
-              ]
+              ],
+              "role": "pay"
             }
           ]
         }

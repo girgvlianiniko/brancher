@@ -54,6 +54,10 @@ export function daysSince(iso: string | null): number | null {
   return Number.isNaN(at) ? null : Math.floor((Date.now() - at) / 86_400_000)
 }
 
+/** A backlog large enough to stop being routine. */
+export const edgeFarBehind = (edge: LagEdge, thresholds: Thresholds): boolean =>
+  edge.realCommits >= thresholds.far
+
 /** True when this edge alone is enough to call the environment behind. */
 export function edgeOverThreshold(edge: LagEdge, thresholds: Thresholds): boolean {
   if (edge.realCommits === 0) return false
@@ -135,9 +139,12 @@ export function verdict(input: {
   if (waiting.length > 0) {
     const from = sourceLabel ? ` from ${sourceLabel.toLowerCase()}` : ''
     const age = oldest !== undefined && oldest >= thresholds.days ? `, oldest ${plural(oldest, 'day')}` : ''
+    // Either one step is enormous, or the environment's total backlog is. Both are past
+    // the point where a nudge is the right response.
+    const far = waiting.some((edge) => edge.farBehind) || commits >= thresholds.far
     return {
-      colour: 'yellow',
-      word: 'Behind',
+      colour: far ? 'alert' : 'yellow',
+      word: far ? 'Far behind' : 'Behind',
       sentence: `${plural(commits, 'change')} waiting${from}${age}`,
       lastDeployedAt,
       autoDeploy,

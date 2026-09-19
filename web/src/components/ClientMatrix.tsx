@@ -29,11 +29,13 @@ export const worstOf = (cells: (CellStatus | null)[]): Colour => {
   const colours = cells.filter((c): c is CellStatus => c !== null).map((c) => c.colour)
   return colours.includes('red')
     ? 'red'
-    : colours.includes('yellow')
-      ? 'yellow'
-      : colours.includes('green')
-        ? 'green'
-        : 'grey'
+    : colours.includes('alert')
+      ? 'alert'
+      : colours.includes('yellow')
+        ? 'yellow'
+        : colours.includes('green')
+          ? 'green'
+          : 'grey'
 }
 
 function rolesOf(row: BoardRow): ServiceKind[] {
@@ -48,6 +50,7 @@ function rolesOf(row: BoardRow): ServiceKind[] {
 
 interface RoleState {
   unmeasured: boolean
+  far: boolean
   down: boolean
   slow: boolean
   behind: number
@@ -66,6 +69,7 @@ function roleState(cell: CellStatus | null, role: ServiceKind): RoleState {
   if (!cell)
     return {
       unmeasured: false,
+      far: false,
       down: false,
       slow: false,
       behind: 0,
@@ -83,6 +87,7 @@ function roleState(cell: CellStatus | null, role: ServiceKind): RoleState {
   return {
     // Every comparison for this part failed, so its backlog is unknown rather than zero.
     unmeasured: edges.length > 0 && edges.every((edge) => edge.error !== null),
+    far: edges.some((edge) => edge.farBehind),
     down: service?.status === 'down',
     slow: (service?.latencyMs ?? 0) > SLOW_MS && service?.status === 'up',
     behind: edges.reduce((sum, e) => sum + e.realCommits, 0),
@@ -133,7 +138,15 @@ function MatrixCell({ state }: { state: RoleState }) {
 
   return (
     <span
-      className={cn(CELL, 'tabular', state.overThreshold ? 'bg-warn-soft/55 text-warn' : 'text-fg-2')}
+      className={cn(
+        CELL,
+        'tabular',
+        state.far
+          ? 'bg-alert-soft/65 text-alert'
+          : state.overThreshold
+            ? 'bg-warn-soft/55 text-warn'
+            : 'text-fg-2',
+      )}
       title={title}
     >
       <span className="text-[13px] font-semibold">{formatNumber(state.behind)}</span>
@@ -240,14 +253,22 @@ export function ClientMatrixCard({
       >
         <span />
         <span />
-        {present.map((kind) => (
-          <span
-            key={kind}
-            className="truncate text-center text-[10px] font-semibold tracking-wider text-fg-3 uppercase"
-          >
-            {SLOT_LABEL[kind]}
-          </span>
-        ))}
+        {present.map((kind) => {
+          // The column head carries the environment's own verdict, so a total that is far
+          // behind is visible even when no single step in the column is.
+          const colour = row.cells[columns.indexOf(kind)]?.colour
+          return (
+            <span
+              key={kind}
+              className={cn(
+                'truncate text-center text-[10px] font-semibold tracking-wider uppercase',
+                colour === 'alert' ? 'text-alert' : colour === 'red' ? 'text-del' : 'text-fg-3',
+              )}
+            >
+              {SLOT_LABEL[kind]}
+            </span>
+          )
+        })}
         <span />
 
         {roles.map((role) => (
@@ -272,17 +293,18 @@ export function ClientMatrixCard({
         <span />
         {present.map((kind) => {
           const cell = row.cells[columns.indexOf(kind)]!
-          const byHand = cell.autoDeploy === 'off' || cell.autoDeploy === 'mixed'
           return (
             <span key={kind} className="flex flex-col items-center justify-center gap-0.5 leading-tight">
               <span className="flex h-4 items-center gap-1 text-[11px]">
-                {byHand ? (
+                {cell.autoDeploy === 'on' ? (
+                  <span className="text-fg-3">on push</span>
+                ) : (
                   <>
                     <TriangleAlert className="size-3 shrink-0 text-warn" aria-hidden />
-                    <span className="text-warn">by hand</span>
+                    <span className="text-warn">
+                      {cell.autoDeploy === 'mixed' ? 'part by hand' : 'by hand'}
+                    </span>
                   </>
-                ) : (
-                  <span className="text-fg-3">on push</span>
                 )}
               </span>
               <span className="flex h-4 items-center text-[11px] text-fg-3/70">

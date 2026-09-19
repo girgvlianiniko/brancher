@@ -100,6 +100,8 @@
   --add-soft: oklch(0.28 0.07 150);
   --warn: var(--warning);
   --warn-soft: oklch(0.3 0.07 76);
+  --alert: oklch(0.735 0.185 44);
+  --alert-soft: oklch(0.31 0.085 44);
   --del: var(--destructive);
   --del-soft: oklch(0.3 0.09 25);
 
@@ -136,6 +138,8 @@
   --color-add-soft: var(--add-soft);
   --color-warn: var(--warn);
   --color-warn-soft: var(--warn-soft);
+  --color-alert: var(--alert);
+  --color-alert-soft: var(--alert-soft);
   --color-del: var(--del);
   --color-del-soft: var(--del-soft);
 

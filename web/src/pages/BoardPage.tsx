@@ -41,7 +41,7 @@ export function BoardPage() {
     return {
       total: clients.length,
       working: colours.filter((c) => c === 'green').length,
-      attention: colours.filter((c) => c === 'yellow').length,
+      attention: colours.filter((c) => c === 'yellow' || c === 'alert').length,
       down: colours.filter((c) => c === 'red').length,
     }
   }, [clients])
@@ -51,7 +51,7 @@ export function BoardPage() {
     return clients.filter((row) => {
       if (term && !`${row.name} ${row.region}`.toLowerCase().includes(term)) return false
       const colour = worstOf(row.cells)
-      if (filter === 'attention') return colour === 'yellow'
+      if (filter === 'attention') return colour === 'yellow' || colour === 'alert'
       if (filter === 'working') return colour === 'green'
       if (filter === 'down') return colour === 'red'
       return true

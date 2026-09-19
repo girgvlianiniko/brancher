@@ -20,7 +20,7 @@ import { sourceFor } from '../sources'
 import { getConfig, getRows, sourceOf, type Row } from './config'
 import { lagBetween, loadTips, type RefTip } from './lag'
 import { pooled, probe } from './probe'
-import { edgeOverThreshold, verdict } from './rules'
+import { edgeFarBehind, edgeOverThreshold, verdict } from './rules'
 import {
   changesFor,
   historyFor,
@@ -324,6 +324,7 @@ async function refreshLag() {
           filesChanged: 0,
           oldestWaitingAt: null,
           overThreshold: false,
+          farBehind: false,
           error: null,
         }
         const index = edges.push(base) - 1
@@ -347,6 +348,7 @@ async function refreshLag() {
             const numbers = await lagBetween(repo.path, fromRef, toRef)
             Object.assign(edges[index], numbers)
             edges[index].overThreshold = edgeOverThreshold(edges[index], row.thresholds)
+            edges[index].farBehind = edgeFarBehind(edges[index], row.thresholds)
           } catch (error) {
             edges[index].error = error instanceof Error ? error.message : 'Comparison failed'
           }
