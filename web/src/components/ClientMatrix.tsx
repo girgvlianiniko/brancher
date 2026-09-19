@@ -58,6 +58,9 @@ interface RoleState {
 
 const SLOW_MS = 1500
 
+/** Label column, a spacer, the environment columns, then a matching spacer. */
+const COLUMNS = (count: number) => `4.75rem 1fr repeat(${count}, minmax(4.5rem, 8rem)) 1fr`
+
 function roleState(cell: CellStatus | null, role: ServiceKind): RoleState {
   if (!cell)
     return { down: false, slow: false, behind: 0, overThreshold: false, oldest: null, known: false, latency: null }
@@ -78,8 +81,11 @@ function roleState(cell: CellStatus | null, role: ServiceKind): RoleState {
   }
 }
 
+/** Every cell is the same height, so rows line up whether or not they carry an age. */
+const CELL = 'flex min-h-10 flex-col items-center justify-center rounded-md px-1 leading-tight'
+
 function MatrixCell({ state }: { state: RoleState }) {
-  if (!state.known) return <span className="py-1.5 text-center text-[13px] text-fg-3/35">–</span>
+  if (!state.known) return <span className={cn(CELL, 'text-[13px] text-fg-3/35')}>–</span>
 
   const title = [
     state.down ? 'Not answering' : state.latency !== null ? `Answers in ${state.latency} ms` : null,
@@ -91,7 +97,7 @@ function MatrixCell({ state }: { state: RoleState }) {
 
   if (state.down) {
     return (
-      <span className="rounded-md bg-del-soft/60 py-1.5 text-center text-[13px] font-semibold text-del" title={title}>
+      <span className={cn(CELL, 'bg-del-soft/60 text-[13px] font-semibold text-del')} title={title}>
         down
       </span>
     )
@@ -99,7 +105,7 @@ function MatrixCell({ state }: { state: RoleState }) {
 
   if (state.behind === 0) {
     return (
-      <span className={cn('py-1.5 text-center text-[13px]', state.slow ? 'text-warn' : 'text-add/70')} title={title}>
+      <span className={cn(CELL, 'text-[13px]', state.slow ? 'text-warn' : 'text-add/70')} title={title}>
         {state.slow ? 'slow' : '✓'}
       </span>
     )
@@ -107,14 +113,11 @@ function MatrixCell({ state }: { state: RoleState }) {
 
   return (
     <span
-      className={cn(
-        'tabular rounded-md py-1 text-center leading-tight',
-        state.overThreshold ? 'bg-warn-soft/55 text-warn' : 'text-fg-2',
-      )}
+      className={cn(CELL, 'tabular', state.overThreshold ? 'bg-warn-soft/55 text-warn' : 'text-fg-2')}
       title={title}
     >
-      <span className="block text-[13px] font-semibold">{formatNumber(state.behind)}</span>
-      {state.oldest && <span className="block text-[10px] opacity-75">{shortAge(state.oldest)}</span>}
+      <span className="text-[13px] font-semibold">{formatNumber(state.behind)}</span>
+      {state.oldest && <span className="text-[10px] opacity-75">{shortAge(state.oldest)}</span>}
     </span>
   )
 }
@@ -162,7 +165,7 @@ export function ClientMatrixCard({
         dragging ? 'border-accent opacity-40' : 'border-line hover:border-line-strong',
       )}
     >
-      <header className="flex items-center gap-2.5 px-4 pt-3.5 pb-3">
+      <header className="flex items-center gap-2.5 px-4 py-3.5">
         <span
           className="-ml-1 cursor-grab text-fg-3/40 opacity-0 transition group-hover:opacity-100 active:cursor-grabbing"
           title="Drag to reorder"
@@ -204,55 +207,63 @@ export function ClientMatrixCard({
       </header>
 
       <div
-        className="grid items-center gap-x-2 border-t border-line px-4 pt-2.5 pb-1"
-        style={{ gridTemplateColumns: `4.75rem repeat(${present.length}, minmax(4.5rem, 8rem))` }}
+        className="grid gap-x-2 gap-y-1.5 border-t border-line px-4 py-3"
+        style={{ gridTemplateColumns: COLUMNS(present.length) }}
       >
+        <span />
         <span />
         {present.map((kind) => (
           <span
             key={kind}
-            className="truncate pb-1.5 text-center text-[10px] font-semibold tracking-wider text-fg-3 uppercase"
+            className="truncate text-center text-[10px] font-semibold tracking-wider text-fg-3 uppercase"
           >
             {SLOT_LABEL[kind]}
           </span>
         ))}
+        <span />
 
         {roles.map((role) => (
           <div key={role} className="contents">
-            <span className="truncate py-1 text-[13px] text-fg-3">{ROLE_LABEL[role]}</span>
+            <span className="flex min-h-10 items-center truncate text-[13px] text-fg-3">
+              {ROLE_LABEL[role]}
+            </span>
+            <span />
             {present.map((kind) => (
               <MatrixCell key={kind} state={roleState(row.cells[columns.indexOf(kind)] ?? null, role)} />
             ))}
+            <span />
           </div>
         ))}
       </div>
 
       <div
-        className="grid items-start gap-x-2 border-t border-line px-4 pt-2 pb-3"
-        style={{ gridTemplateColumns: `4.75rem repeat(${present.length}, minmax(4.5rem, 8rem))` }}
+        className="grid gap-x-2 border-t border-line px-4 py-3"
+        style={{ gridTemplateColumns: COLUMNS(present.length) }}
       >
-        <span className="text-[10px] tracking-wider text-fg-3/70 uppercase">Deploys</span>
+        <span className="flex items-center text-[10px] tracking-wider text-fg-3/70 uppercase">Deploys</span>
+        <span />
         {present.map((kind) => {
           const cell = row.cells[columns.indexOf(kind)]!
           const byHand = cell.autoDeploy === 'off' || cell.autoDeploy === 'mixed'
           return (
-            <span key={kind} className="text-center text-[11px] leading-tight text-fg-3">
-              {byHand ? (
-                <span className="inline-flex items-center gap-1 text-warn" title="No workflow deploys this branch on push">
-                  <TriangleAlert className="size-3" aria-hidden />
-                  by hand
-                </span>
-              ) : (
-                'on push'
-              )}
-              {cell.uptime !== null && (
-                <span className="mt-0.5 block text-fg-3/70" title="Share of checks that answered in the last day">
-                  {percent(cell.uptime)} up
-                </span>
-              )}
+            <span key={kind} className="flex flex-col items-center justify-center gap-0.5 leading-tight">
+              <span className="flex h-4 items-center gap-1 text-[11px]">
+                {byHand ? (
+                  <>
+                    <TriangleAlert className="size-3 shrink-0 text-warn" aria-hidden />
+                    <span className="text-warn">by hand</span>
+                  </>
+                ) : (
+                  <span className="text-fg-3">on push</span>
+                )}
+              </span>
+              <span className="flex h-4 items-center text-[11px] text-fg-3/70">
+                {cell.uptime !== null ? `${percent(cell.uptime)} up` : ''}
+              </span>
             </span>
           )
         })}
+        <span />
       </div>
     </article>
   )

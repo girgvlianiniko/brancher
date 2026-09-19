@@ -156,7 +156,7 @@ export function BoardPage() {
   )
 
   const heading = (label: string, count: number) => (
-    <h2 className="mb-2.5 flex items-center gap-2 text-[11px] font-semibold tracking-wider text-fg-3 uppercase">
+    <h2 className="mb-3 flex items-center gap-2 text-[11px] font-semibold tracking-wider text-fg-3 uppercase">
       {label}
       <span className="rounded bg-surface-2 px-1.5 py-0.5 text-[10px] text-fg-3">{count}</span>
     </h2>
@@ -165,7 +165,7 @@ export function BoardPage() {
   const body = (
     <>
       {pinned.length > 0 && (
-        <section className="mb-6">
+        <section className="mb-7">
           {heading('Pinned', pinned.length)}
           {section(pinned)}
         </section>
@@ -216,7 +216,7 @@ export function BoardPage() {
       }
     >
       {!data.probeHostReachable && (
-        <div className="mb-4 rounded-lg border border-warn/40 bg-warn-soft/40 px-4 py-3 text-sm">
+        <div className="mb-5 rounded-lg border border-warn/40 bg-warn-soft/40 px-4 py-3 text-sm">
           This machine cannot reach the internet, so these are the last known colours.
         </div>
       )}
@@ -250,12 +250,12 @@ export function BoardPage() {
       </div>
 
       {developmentCell && (
-        <div className="mt-4">
+        <div className="mt-5">
           <DevelopmentBar cell={developmentCell} />
         </div>
       )}
 
-      <div className="mt-4 mb-5 flex flex-wrap items-center gap-3">
+      <div className="mt-5 mb-5 flex flex-wrap items-center gap-3">
         <label className="relative min-w-56 flex-1">
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-fg-3" aria-hidden />
           <input
@@ -266,8 +266,9 @@ export function BoardPage() {
             className="h-10 w-full rounded-lg border border-line bg-card pr-3 pl-9 text-sm placeholder:text-fg-3 focus:border-accent focus:outline-none"
           />
         </label>
-        <p className="text-xs text-fg-3">
-          Numbers are changes waiting to deploy. Drag a card to reorder, use the star to pin.
+        <p className="max-w-md text-xs leading-relaxed text-fg-3">
+          Numbers are changes waiting to deploy, with the age of the oldest underneath.
+          Drag a card to reorder, use the star to pin.
         </p>
       </div>
 
